@@ -19,7 +19,6 @@
 #File Name: Otter Model R v4
 
 rm(list = ls())
-setwd("~/Documents/Thesis/Otter Data/Model Data/R codes/Model to R")
 
 # Packages--------------------------------------------------------------
 library(dplyr)
