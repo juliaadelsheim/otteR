@@ -1,0 +1,84 @@
+---
+title: "otteR"
+output: 
+  flexdashboard::flex_dashboard:
+    source_code: embed
+runtime: shiny
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+source("./Code/OtterModel.R")
+library(tidyverse)
+```
+
+# Inputs {.sidebar}
+
+Input sidebar....
+
+```{r}
+# Running Model
+masses <- read.csv(file ="./Data/mass_growth.csv")
+
+# How each unit spend their time
+act_budgets <- read.csv(file = './Data/ActivityBudgets.csv')
+
+# Defining life stages per year and sex
+age_convert <- read.csv(file = './Data/age_lifestage.csv')
+
+
+model_run_og <- otter_model(masses = masses,
+                            act_budgets = act_budgets,
+                            age_convert = age_convert)
+```
+
+Author: **Julia Adelsheim**
+
+![](Pictures/Sea%20Otter.png)
+
+# Graphs
+
+## Column {data-width="650"}
+
+### Total Energy Requirement
+
+```{r}
+
+model_run_og %>% 
+  mutate(Group = paste(Sex, with.pup)) %>% 
+  ggplot() +
+  geom_line(aes(Age, total_energy, color = Group))
+
+```
+
+### Activity budget
+
+## Column {data-width="650"}
+
+### Total Energy Requirement
+
+```{r}
+
+model_run_og %>% 
+  mutate(Group = paste(Sex, with.pup)) %>% 
+  ggplot() +
+  geom_line(aes(Age, total_energy, color = Group))
+
+```
+
+### Activity budget
+
+# Data
+
+### Standard Model
+
+```{r}
+
+renderTable(model_run_og)
+
+```
+
+### Custom Model
