@@ -259,11 +259,13 @@ renderPlot({
 
 # Data
 
-### Standard Model
+### Model Output
 
 ```{r}
+renderTable({
+  
+  values$model_run_og
 
+})
 
 ```
-
-### Custom Model
