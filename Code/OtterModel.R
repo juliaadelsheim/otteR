@@ -31,13 +31,13 @@ total_min_per_day <- 1440
 
 # Data------------------------------------------------------------------
 # Body masses and tissue growth
-masses <- read.csv(file ='mass_growth.csv')
+masses <- read.csv(file ='./Data/mass_growth.csv')
 
 # How each unit spend their time
-act_budgets <- read.csv(file = 'ActivityBudgets.csv')
+act_budgets <- read.csv(file = './Data/ActivityBudgets.csv')
 
 # Defining life stages per year and sex
-age_convert <- read.csv(file = 'age_lifestage.csv')
+age_convert <- read.csv(file = './Data/age_lifestage.csv')
 
 # Functions ------------------------------------------------------------
 # Make an ROR function so that I don't have to repeat the code every time I change conditions
@@ -179,3 +179,52 @@ model_run_og %>%
 # Metabolic rates
 # Percent time of day (Activity budget)
 # Cost of having pup
+
+#---- Graphs ----
+
+#---- Activity Budget Graphs---- 
+
+# Pups/Juveniles/Subadults
+
+actbudget_young <- model_run_og %>% 
+  filter(Lifestage != "adult") %>% 
+  select(Sex, Age, Lifestage, with.pup, perc_time_activity, new_perc_time_forage, new_perc_time_rest) %>% 
+  pivot_longer(cols=c(perc_time_activity, new_perc_time_forage, new_perc_time_rest),
+               names_to='Behaviour',
+               values_to='PercentTime') %>% 
+  mutate(Behaviour = recode(Behaviour, perc_time_activity = 'Activity', 
+                            new_perc_time_forage = 'Foraging', new_perc_time_rest = 'Resting')) 
+ 
+      
+library(data.table)
+actbudget_young <- data.table(actbudget_young)
+actbudget_young <- actbudget_young[,  mean(PercentTime), by=.(Behaviour, Lifestage)] 
+
+# is.factor(actbudget_young$Lifestage)
+# actbudget_young$Lifestage <- as.factor(actbudget_young$Lifestage)
+# levels(actbudget_young$Lifestage)
+# levels(actbudget_young, c("pup", "juvenile", "subadult"))
+       
+actbudget_young$Lifestage <- factor(actbudget_young$Lifestage)
+
+actbudget_young$Lifestage <- ordered(actbudget_young$Lifestage, levels = c("pup", "juvenile", "subadult"))
+
+(actbudget_young_plot <- ggplot(actbudget_young,
+  aes(x = Lifestage, y = V1, fill=Behaviour)) +
+  geom_bar(stat='identity') +
+  theme_classic() +
+  ylab("Percent of Day")+
+  scale_x_discrete(labels = c("Pup", "Juvenile", "SubAdult"))
+ )
+
+actbudget_young <- ggsave("Actbudget_young.jpeg", width = 4, height = 2.6)
+  
+
+
+
+
+
+
+
+
+
