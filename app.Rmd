@@ -164,11 +164,11 @@ age_convert <- read.csv(file = './Data/age_lifestage.csv')
 values <- reactiveValues(df_data = NULL)
 
 reactive({
-  
-  values$model_run_og <- otter_model(masses = masses,
-                            act_budgets = act_budgets,
-                            age_convert = age_convert,
-                            cost_pup = input$cost_pup)
+  values$model_run_og <- otter_model(
+    masses = values$masses,
+    act_budgets = values$act_budgets,
+    age_convert = age_convert,
+    cost_pup = input$cost_pup)
 })
 
 
@@ -183,6 +183,64 @@ Author: **Julia Adelsheim**
 
 ## Column {data-width="650"}
 
+### mass_growt
+
+```{r}
+rHandsontableOutput("hot_mass")
+```
+
+```{r}
+ reactive({
+    # remove button and isolate to update file automatically
+    # after each table change
+    hot_mass = input$hot_mass
+    if (!is.null(hot_mass)) {
+      values$masses <- hot_to_r(input$hot_mass)
+    }
+  })
+
+  output$hot_mass = renderRHandsontable({
+    if (!is.null(input$hot_mass)) {
+      DF = hot_to_r(input$hot_mass)
+    } else {
+      DF = masses
+    }
+
+    rhandsontable(DF) %>%
+        hot_table(highlightCol = TRUE, highlightRow = TRUE)
+  })
+```
+
+### activity budget
+
+```{r}
+rHandsontableOutput("hot_activity")
+```
+
+```{r}
+ reactive({
+    # remove button and isolate to update file automatically
+    # after each table change
+    hot_activity = input$hot_activity
+    if (!is.null(hot_activity)) {
+      values$act_budgets <- hot_to_r(input$hot_activity)
+    }
+  })
+
+  output$hot_activity = renderRHandsontable({
+    if (!is.null(input$hot_activity)) {
+      DFF = hot_to_r(input$hot_activity)
+    } else {
+      DFF = act_budgets
+    }
+
+    rhandsontable(DFF) %>%
+        hot_table(highlightCol = TRUE, highlightRow = TRUE)
+  })
+```
+
+## Column {data-width="650"}
+
 ### Total Energy Requirement
 
 ```{r}
@@ -194,20 +252,6 @@ renderPlot({
   geom_line(aes(Age, total_energy, color = Group))
 
 })
-
-
-
-
-```
-
-### Activity budget
-
-## Column {data-width="650"}
-
-### Total Energy Requirement
-
-```{r}
-
 
 ```
 
