@@ -1,28 +1,11 @@
----
-title: "otteR"
-output: 
-  flexdashboard::flex_dashboard:
-    source_code: embed
-runtime: shiny
-editor_options:
-  markdown:
-    wrap: 72
----
 
-```{r setup, include=FALSE}
-library(flexdashboard)
-library(tidyverse)
-library(shiny)
-```
 
-```{r}
+
 # Functions ------------------------------------------------------------
 # Make an ROR function so that I don't have to repeat the code every time I change conditions
 # Data is the wide_data table with behavior specific values, returns a dataframe that calculated
 #  from profits, time_needed_to_forage, and new_perc_time_forage
 calculate_foraging_time <- function(data) {
-  
-  total_min_per_day <- 1440
   
   output <- data %>% 
     
@@ -42,8 +25,6 @@ calculate_foraging_time <- function(data) {
 # This function builds parts of the model. Takes in a wide dataframe of activity specific rates and costs.
 #  Returns new costs of foraging.
 build_model <- function(budget_data, ROR){  
-  
-  total_min_per_day <- 1440
   
   # Put in columns that are not going to change with ROR
   model_pt1 <- budget_data %>%
@@ -100,7 +81,7 @@ merge_data <- function(masses, act_budgets, age_convert) {
 
 # Re-sort data into a wider pivot table to columns specific to behavior: 
 
-make_wide_data <- function(mass_lifestage_budget, cost_pup) {
+make_wide_data <- function(mass_lifestage_budget) {
   mass_lifestage_budget_wide <- mass_lifestage_budget %>%
     # Make dataframe in a wide format
     pivot_wider(names_from = Behaviour, values_from=c(perc_time, min_per_day, MR, metabolic_rates, actual_costs)) %>% 
@@ -123,11 +104,11 @@ make_wide_data <- function(mass_lifestage_budget, cost_pup) {
 #   Receives the raw data frame of model variables.
 #   Returns a dataframe of the calculated total energy expenditure.
 
-otter_model <- function(masses, act_budgets, age_convert, cost_pup) {
+otter_model <- function(masses, act_budgets, age_convert) {
   mass_lifestage_budget <- merge_data(masses = masses,
                                       act_budgets = act_budgets,
                                       age_convert = age_convert)
-  wide_data <- make_wide_data(mass_lifestage_budget, cost_pup)
+  wide_data <- make_wide_data(mass_lifestage_budget)
   
   # Changing conditions of ROR
   ROR_og <- calculate_foraging_time(wide_data) # Original ROR
@@ -141,86 +122,3 @@ otter_model <- function(masses, act_budgets, age_convert, cost_pup) {
   
   return(model_results)
 }
-```
-
-# Inputs {.sidebar}
-
-Input sidebar....
-
-```{r}
-numericInput("cost_pup", label = "Cost of having a pup", value = 3931)
-
-```
-
-```{r}
-# Running Model
-masses <- read.csv(file ="./Data/mass_growth.csv")
-
-# How each unit spend their time
-act_budgets <- read.csv(file = './Data/ActivityBudgets.csv')
-
-# Defining life stages per year and sex
-age_convert <- read.csv(file = './Data/age_lifestage.csv')
-
-values <- reactiveValues(df_data = NULL)
-
-reactive({
-  
-  values$model_run_og <- otter_model(masses = masses,
-                            act_budgets = act_budgets,
-                            age_convert = age_convert,
-                            cost_pup = input$cost_pup)
-})
-
-
-
-```
-
-Author: **Julia Adelsheim**
-
-![](Pictures/Sea%20Otter.png)
-
-# Graphs
-
-## Column {data-width="650"}
-
-### Total Energy Requirement
-
-```{r}
-renderPlot({
-  
-  values$model_run_og %>% 
-  mutate(Group = paste(Sex, with.pup)) %>% 
-  ggplot() +
-  geom_line(aes(Age, total_energy, color = Group))
-
-})
-
-
-
-
-```
-
-### Activity budget
-
-## Column {data-width="650"}
-
-### Total Energy Requirement
-
-```{r}
-
-
-```
-
-### Activity budget
-
-# Data
-
-### Standard Model
-
-```{r}
-
-
-```
-
-### Custom Model
