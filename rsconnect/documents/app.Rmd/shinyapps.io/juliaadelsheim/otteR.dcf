@@ -5,9 +5,9 @@ account: juliaadelsheim
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 8589141
-bundleId: 6967668
+bundleId: 6967736
 url: https://juliaadelsheim.shinyapps.io/otteR/
-when: 1678991622.81204
-lastSyncTime: 1678991622.81205
+when: 1678992682.15151
+lastSyncTime: 1678992682.15152
 asMultiple: FALSE
 asStatic: FALSE
