@@ -12,7 +12,6 @@ editor_options:
 ```{r setup, include=FALSE}
 library(flexdashboard)
 library(tidyverse)
-library(shiny)
 library(rhandsontable)
 ```
 
@@ -171,8 +170,6 @@ reactive({
     cost_pup = input$cost_pup)
 })
 
-
-
 ```
 
 Author: **Julia Adelsheim**
@@ -191,8 +188,7 @@ rHandsontableOutput("hot_mass")
 
 ```{r}
  reactive({
-    # remove button and isolate to update file automatically
-    # after each table change
+
     hot_mass = input$hot_mass
     if (!is.null(hot_mass)) {
       values$masses <- hot_to_r(input$hot_mass)
@@ -249,8 +245,7 @@ renderPlot({
   values$model_run_og %>% 
   mutate(Group = paste(Sex, with.pup)) %>% 
   ggplot() +
-  geom_line(aes(Age, total_energy, color = Group)) +
-    theme_classic()
+  geom_line(aes(Age, total_energy, color = Group))
 
 })
 
@@ -259,27 +254,25 @@ renderPlot({
 ### Activity budget
 
 ```{r}
-
 renderPlot({
   
-#Data
-values$model_run_og %>% 
-  filter(Lifestage != "adult") %>% 
-  select(Sex, Age, Lifestage, with.pup, perc_time_activity, new_perc_time_forage, new_perc_time_rest) %>% 
-  pivot_longer(cols=c(perc_time_activity, new_perc_time_forage, new_perc_time_rest),
-               names_to='Behaviour',
-               values_to='PercentTime') %>% 
-  mutate(Behaviour = recode(Behaviour, perc_time_activity = 'Activity', 
-                            new_perc_time_forage = 'Foraging', new_perc_time_rest = 'Resting')) %>% 
-  ggplot(aes(x = Lifestage, y = PercentTime, fill=Behaviour)) +
-  geom_bar(position = "dodge", stat= "identity") +
-  facet_grid() +
-  theme_classic() +
-  ylab("Percent of Day") +
-  scale_x_discrete(labels = c("Pup", "Juvenile", "SubAdult"))
-  
-  
+  values$model_run_og %>% 
+    filter(Lifestage != "adult") %>% 
+    select(Sex, Age, Lifestage, with.pup, perc_time_activity, new_perc_time_forage, new_perc_time_rest) %>% 
+    pivot_longer(cols=c(perc_time_activity, new_perc_time_forage, new_perc_time_rest),
+                 names_to='Behaviour',
+                 values_to='PercentTime') %>% 
+    mutate(Behaviour = recode(Behaviour, perc_time_activity = 'Activity', 
+                              new_perc_time_forage = 'Foraging', new_perc_time_rest = 'Resting'))  %>% 
+    ggplot(aes(x = Lifestage, y = PercentTime, fill=Behaviour)) +
+    geom_bar(position = "dodge", stat= "identity") +
+    facet_grid() +
+    theme_classic() +
+    ylab("Percent of Day") +
+    scale_x_discrete(labels = c("Pup", "Juvenile", "SubAdult"))
+
 })
+
 ```
 
 # Data
