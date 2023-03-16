@@ -183,7 +183,7 @@ Author: **Julia Adelsheim**
 
 ## Column {data-width="650"}
 
-### mass_growt
+### Mass & Growth
 
 ```{r}
 rHandsontableOutput("hot_mass")
@@ -211,7 +211,7 @@ rHandsontableOutput("hot_mass")
   })
 ```
 
-### activity budget
+### Activity Budget
 
 ```{r}
 rHandsontableOutput("hot_activity")

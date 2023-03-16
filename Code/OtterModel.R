@@ -24,6 +24,7 @@ rm(list = ls())
 library(dplyr)
 library(tidyverse)
 library(ggplot2)
+library(data.table)
 
 #Constants--------------------------------------------------------------
 cost_pup <- 3931
@@ -195,32 +196,47 @@ actbudget_young <- model_run_og %>%
   mutate(Behaviour = recode(Behaviour, perc_time_activity = 'Activity', 
                             new_perc_time_forage = 'Foraging', new_perc_time_rest = 'Resting')) 
  
-      
+#---- Stacked Bar Graph----
 library(data.table)
 actbudget_young <- data.table(actbudget_young)
 actbudget_young <- actbudget_young[,  mean(PercentTime), by=.(Behaviour, Lifestage)] 
-
-# is.factor(actbudget_young$Lifestage)
-# actbudget_young$Lifestage <- as.factor(actbudget_young$Lifestage)
-# levels(actbudget_young$Lifestage)
-# levels(actbudget_young, c("pup", "juvenile", "subadult"))
        
 actbudget_young$Lifestage <- factor(actbudget_young$Lifestage)
 
 actbudget_young$Lifestage <- ordered(actbudget_young$Lifestage, levels = c("pup", "juvenile", "subadult"))
 
-(actbudget_young_plot <- ggplot(actbudget_young,
+(actbudget_young_stackedplot <- ggplot(actbudget_young,
   aes(x = Lifestage, y = V1, fill=Behaviour)) +
   geom_bar(stat='identity') +
   theme_classic() +
   ylab("Percent of Day")+
   scale_x_discrete(labels = c("Pup", "Juvenile", "SubAdult"))
  )
+actbudget_young <- ggsave("Actbudget_young_stacked.jpeg", width = 4, height = 2.6)
+  
+#---- Grouped Bar Graph----
+
+#Data
+actbudget_young <- model_run_og %>% 
+  filter(Lifestage != "adult") %>% 
+  select(Sex, Age, Lifestage, with.pup, perc_time_activity, new_perc_time_forage, new_perc_time_rest) %>% 
+  pivot_longer(cols=c(perc_time_activity, new_perc_time_forage, new_perc_time_rest),
+               names_to='Behaviour',
+               values_to='PercentTime') %>% 
+  mutate(Behaviour = recode(Behaviour, perc_time_activity = 'Activity', 
+                            new_perc_time_forage = 'Foraging', new_perc_time_rest = 'Resting')) 
+
+#Graph
+(actbudget_young_bars <- ggplot(actbudget_young,
+  aes(x = Lifestage, y = PercentTime, fill=Behaviour)) +
+  geom_bar(position = "dodge", stat= "identity") +
+  facet_grid() +
+  theme_classic() +
+  ylab("Percent of Day") +
+  scale_x_discrete(labels = c("Pup", "Juvenile", "SubAdult"))
+)
 
 actbudget_young <- ggsave("Actbudget_young.jpeg", width = 4, height = 2.6)
-  
-
-
 
 
 
