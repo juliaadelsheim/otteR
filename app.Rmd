@@ -13,6 +13,7 @@ editor_options:
 library(flexdashboard)
 library(tidyverse)
 library(shiny)
+library(rhandsontable)
 ```
 
 ```{r}
@@ -145,16 +146,14 @@ otter_model <- function(masses, act_budgets, age_convert, cost_pup) {
 
 # Inputs {.sidebar}
 
-Input sidebar....
-
 ```{r}
 numericInput("cost_pup", label = "Cost of having a pup", value = 3931)
-
 ```
 
 ```{r}
 # Running Model
 masses <- read.csv(file ="./Data/mass_growth.csv")
+
 
 # How each unit spend their time
 act_budgets <- read.csv(file = './Data/ActivityBudgets.csv')
