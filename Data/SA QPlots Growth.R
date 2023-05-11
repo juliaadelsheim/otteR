@@ -1,4 +1,4 @@
-## Q plots from Sensitivity analysys
+## Q plots from Sensitivity analysis
 
 # Growth
 
