@@ -164,11 +164,11 @@ otter_model <- function(masses, act_budgets, age_convert) {
 
 # Build Model---------------------------------------------------------------------------------
 
-#Model runs with varying ROR changes 
 
 model_run_og <- otter_model(masses = masses,
                             act_budgets = act_budgets,
                             age_convert = age_convert)
+
 
 
 model_run_og %>% 
@@ -226,17 +226,21 @@ actbudget_young <- model_run_og %>%
   mutate(Behaviour = recode(Behaviour, perc_time_activity = 'Activity', 
                             new_perc_time_forage = 'Foraging', new_perc_time_rest = 'Resting')) 
 
+actbudget_young$Lifestage <- factor(actbudget_young$Lifestage)
+
+actbudget_young$Lifestage <- ordered(actbudget_young$Lifestage, levels = c("pup", "juvenile", "subadult"))
 #Graph
+
 (actbudget_young_bars <- ggplot(actbudget_young,
-  aes(x = Lifestage, y = PercentTime, fill=Behaviour)) +
-  geom_bar(position = "dodge", stat= "identity") +
-  facet_grid() +
+  aes(x = Behaviour, y = PercentTime, fill=Behaviour)) +
+  geom_bar(position = "dodge", stat= "identity", show.legend = "FALSE") +
+  facet_grid(.~Lifestage) +
   theme_classic() +
-  ylab("Percent of Day") +
-  scale_x_discrete(labels = c("Pup", "Juvenile", "SubAdult"))
+  ylab("Percent of Day") 
 )
 
-actbudget_young <- ggsave("Actbudget_young.jpeg", width = 4, height = 2.6)
+
+actbudget_young_bars <- ggsave("Actbudget_young.jpeg", width = 4, height = 2.6)
 
 
 
