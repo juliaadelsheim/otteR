@@ -170,6 +170,8 @@ reactive({
     cost_pup = input$cost_pup)
 })
 
+
+
 ```
 
 Author: **Julia Adelsheim**
@@ -280,10 +282,19 @@ renderPlot({
 ### Model Output
 
 ```{r}
-renderTable({
-  
-  values$model_run_og
+splitLayout(cellWidths = c("30%", "70%"), wellPanel(
+  downloadButton("downloadData") ))
 
-})
+output$downloadData <- downloadHandler( filename =
+"ModelOutput.csv" , content = function(file) {
+
+      write.csv(values$model_run_og, file=file)
+    },
+
+contentType="text/csv" )
+
+output$OrigData <- renderDataTable(values$model_run_og)
+
+renderTable({ values$model_run_og })
 
 ```
