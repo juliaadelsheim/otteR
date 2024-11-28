@@ -1,6 +1,6 @@
 # Model Otter from Excel into R
 
-#D ate Created: March 14, 2023
+#Date Created: March 14, 2023
 
 #Author: Julia Adelsheim
 #Collaborators: Izzy Morgante (Nov, Dec 2022, Jan 2023), Andreas Novotny (12-2-2022), Patrick Pata (1-19-23- 3-14-23)

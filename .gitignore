@@ -2,3 +2,8 @@
 .Rhistory
 .RData
 .Ruserdata
+Plots/
+Results/
+Data_output/
+
+.DS_Store
