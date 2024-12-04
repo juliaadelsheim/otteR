@@ -1,0 +1,157 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+rm(list = ls())
+
+# Packages--------------------------------------------------------------
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(data.table)
+source("Code/OtterModel.R")
+```
+
+```{r}
+# Data------------------------------------------------------------------
+# Body masses and tissue growth
+masses <- read.csv(file ='./Data/mass_growth.csv')
+# How each unit spend their time
+act_budgets <- read.csv(file = './Data/ActivityBudgets.csv')
+# Defining life stages per year and sex
+age_convert <- read.csv(file = './Data/age_lifestage.csv')
+
+masses %>% 
+  rowwise() %>% 
+  mutate(Growth = list(rnorm(1000, mean = Growth, sd = 0.1))) %>% 
+  unnest_longer(Growth, indices_to = "index") %>% 
+  filter(index == 2) %>%
+  select(!index) %>% 
+  otteR_merge(act_budgets)
+
+
+
+otteR_merge <- function(masses, act_budgets, return.all = TRUE) {
+  
+  data_input <- merge(masses, age_convert, by.x = c('Age', 'Sex')) %>% 
+  merge(act_budgets, by.x = c('Sex', 'Lifestage')) %>% 
+  #select(Sex, Lifestage, Age, Av_mass, Growth, with.pup, Behaviour, perc_time, perc_time, perc_time) %>% 
+    transmute(Age_class = Lifestage,
+              Sex,
+              Av_mass,
+              Growth,
+              Year_class = Age,
+              With_pup = with.pup,
+              Behaviour,
+              Percentage_of_day = perc_time,
+              Metabolic_rate = MR) %>% 
+    otteR(return.all = return.all)
+  
+}
+
+    
+    
+otteR(data_input, return.all = return.all)
+masses
+```
+
+# Sensitivity analysis
+
+```{r}
+data_input %>%
+  rowwise() %>% 
+  mutate(Growth = list(rnorm(1000, mean = Growth, sd = 0.01))) %>% 
+  unnest_longer(Growth, indices_to = "index") %>% 
+  filter(index == 2) %>%
+  select(!index) %>% 
+  otteR()
+```
+
+```{r}
+# 1. Calculate Organism Level Behaviour_rate (kJ/min)
+  # Calculated as body masss (kg) * metabolic rates (kJ/kg/min)
+  mutate(Behaviour_rate = Av_mass * Metabolic_rate) %>%
+  
+  # 2. Calculate actual (additional) metabolic costs (kJ/day)
+    # Multiply metabolic rates (kJ/min) by time spent (min)
+  mutate(Minutes_per_day = Percentage_of_day * total_min_per_day) %>% 
+  mutate(Actual_costs = Behaviour_rate * Minutes_per_day) %>% 
+  group_by(index) %>% 
+    
+  # 3. Calculate the sum of actual costs of behaviours per day (kJ/day)
+    # Pivoting table to facilitate addition
+  pivot_wider(names_from = Behaviour, values_from=c(
+    Percentage_of_day, Minutes_per_day, Metabolic_rate, Behaviour_rate, Actual_costs)) 
+  mutate(Sum_actual_costs = Actual_costs_rest + Actual_costs_activity + Actual_costs_forage) %>% 
+  
+  # 4. Add the cost of having a pup according to litterature val.
+  mutate(Pup_cost = ifelse(With_pup == 'yes', Cost.pup, 0)) %>% 
+    
+  # 5. Calculate Original Rate of Return (ROR_gross, kJ/min)
+  mutate(ROR_gross = (Sum_actual_costs + Pup_cost + Growth)/(Minutes_per_day_forage)) 
+  # Make ROR repeat for males over the age of three, or females over the age of 2
+  mutate(ROR_gross = ifelse(Age_class != "adult", ROR_gross,
+                        ifelse(Sex == "M", pull(filter(.data = ., Sex == "M", Year_class == 3), ROR_gross),
+                               ifelse(With_pup == "no", pull(filter(.data = ., Sex == "F", With_pup=="no", Year_class == 2), ROR_gross),
+                                      pull(filter(.data = ., Sex == "F", With_pup=="yes", Year_class == 2), ROR_gross)
+                               ))))
+    
+  # 6. Calculate Profits, or net ROR not accounting for resting metabolism (kJ/min)
+  mutate(ROR_net = ROR_gross - (Behaviour_rate_forage - Behaviour_rate_rest)) %>%
+  
+  # 7. Calculate actual cost of rest without foraging
+  mutate(Resting_cost_wout_foraging = Behaviour_rate_rest * (Minutes_per_day_rest + Minutes_per_day_forage)) %>%
+  
+  # 8. Calculate time and cost spent foraging
+  # Sum the actual costs (kJ/day), and divide by net ROR (profits, kJ/min)
+  mutate(Minutes_per_day_forage_modeled =
+           (Actual_costs_activity + Resting_cost_wout_foraging  + Pup_cost + Growth)/ ROR_net) %>% 
+  mutate(Percentage_of_day_forage_modeled =
+           Minutes_per_day_forage_modeled/total_min_per_day) %>%
+  mutate(Actual_costs_forage_modeled =
+           Minutes_per_day_forage_modeled * Behaviour_rate_forage) %>%
+  
+  # 9. Calculate time and cost spent resting
+  mutate(Percentage_of_day_rest_modeled =
+           1 - (Percentage_of_day_forage_modeled + Percentage_of_day_activity)) %>%
+  mutate(Minutes_per_day_rest_modeled =
+           total_min_per_day * Percentage_of_day_rest_modeled) %>%
+  mutate(Actual_costs_rest_modeled =
+           Minutes_per_day_rest_modeled * Behaviour_rate_rest) %>% 
+  
+  # 10. Calculate total energy expenditure
+  mutate(Total_energy_expenditure_modeled =
+           Actual_costs_rest_modeled +
+           Actual_costs_forage_modeled +
+           Actual_costs_activity + Growth + Pup_cost) %>% 
+  mutate(Total_energy_expenditure_original = Actual_costs_rest + Actual_costs_forage +
+           Actual_costs_activity + Growth + Pup_cost) %>% 
+  arrange(Sex, With_pup, Year_class)
+
+
+  # 11. Arrange results
+clean_output <- output %>% 
+  select(Sex, With_pup, Age_class, Year_class, Pup_cost, Growth,
+         Percentage_of_day_activity, Minutes_per_day_activity, Actual_costs_activity,
+         Percentage_of_day_forage_modeled, Minutes_per_day_forage_modeled, Actual_costs_forage_modeled,
+         Percentage_of_day_rest_modeled, Minutes_per_day_rest_modeled, Actual_costs_rest_modeled,
+         Total_energy_expenditure_modeled)
+
+  if (return.all == TRUE) {
+    output
+    return(output)
+  } else {
+    clean_output
+    return(clean_output)
+  }
+}
+
+
+otteR(data_input, return.all = TRUE)
+```
+
+```{r}
+
+```
