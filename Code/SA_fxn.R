@@ -225,6 +225,7 @@ act_budgets <- read.csv(file = 'ActivityBudgets.csv') %>%
 
 age_convert <- read.csv(file = 'age_lifestage.csv')
 
+# TODO change values for standard deviation later
 stdev_MR_perc_time <- read.csv(file= 'Stdev_MR_perc_time.csv') %>%
   filter(!is.na(stdev_perc_time)) %>%
   filter(!is.na(stdev_MR))
@@ -254,6 +255,10 @@ model.run.1 <- otter_model(masses = masses,
 # ** Setup SA -> Select which variable to run **
 set.seed(222)
 
+# PP Notes Dec 16
+# 1. For each iteration, randomly generate values for the variables in the sensitivity analysis
+# 2. Run the model for these values 
+# 3. Then store the outputs to a data frame that marks the run number
 
 ## Change all variables to literature variation ##
 
@@ -262,21 +267,30 @@ sens_analysis_all <- function(sample_size) {
   model_all_reps <- data.frame()
   for (rep_num in c(1:sample_size)) {
     
-    masses_rep <- masses %>%
+    masses_rep <- masses %>%  # PP This is correct
       group_by(Age, Sex) %>%
       mutate(Growth = rnorm(1, Growth, sd = stdev_growth)) %>%
       mutate(Av_mass = rnorm(1, Av_mass, sd = stdev_mass)) %>%
       ungroup()
     
+    # PP: note that here, the stdev values merged to the averages might be changed later
+    #     Also note that in randomly sampling the percent time, the total of the 
+    #     activities can be not equal to 1. 
+    #     ! critical, percent time can be negative after doing the stdev
     act_budgets_rep <- act_budgets %>%
+      left_join(stdev_MR_perc_time, by = c('Sex', 'Lifestage', 'with.pup', "Behaviour")) %>%
       group_by(Sex, Lifestage, with.pup, Behaviour) %>%
-      merge(stdev_MR_perc_time, by = c('Sex', 'Lifestage', 'with.pup', "Behaviour")) %>%
-      group_by(Sex, Lifestage, with.pup, Behaviour, MR, stdev_MR) %>%
       mutate(MR =  rnorm(1, mean = MR, sd = stdev_MR),
              perc_time =  rnorm(1, mean = perc_time, sd = stdev_perc_time)) %>% 
+      ungroup() %>%
+      group_by(Sex, Lifestage, with.pup) %>%
+    # Force percent time to total to 1 ... TODO resolve negative values
+    mutate(total_perc_time = sum(perc_time)) %>%
       ungroup() %>% 
+      mutate(perc_time = perc_time / total_perc_time) %>% 
       dplyr::select(all_of(colnames(act_budgets)))
     
+    # This runs the model with the randomly varied parameters
     model_rep <- otter_model(masses = masses_rep,
                              act_budgets = act_budgets_rep,
                              age_convert = age_convert) %>%
@@ -292,6 +306,34 @@ sens_analysis_all <- function(sample_size) {
 testAll <- sens_analysis_all(sample_size = 1000)
 
 
+# TODO calculate the average and standard error across replicates
+SA_results <- testAll %>% 
+  pivot_longer(cols = c(total_energy, Growth:new_resting_cost),
+               names_to = "parameter", values_to = "value") %>% 
+  group_by(Sex, Age, Lifestage, with.pup, pup_cost, parameter) %>% 
+  summarise(value_mean = mean(value),
+            value_sd = sd(value),
+            n = n(),
+            .groups = "drop") %>% 
+  # Calculate standard error and 95% confidence intervals
+  mutate(value_SE = value_mean/sqrt(value_sd),
+         lower.ci = value_mean - qt(1 - (0.05 / 2), n - 1) * value_SE,
+         upper.ci = value_mean + qt(1 - (0.05 / 2), n - 1) * value_SE) %>% 
+  # group types of otterr
+  mutate(otter_type = paste(Sex, with.pup))
+
+
+# Plot total_energy
+ggplot(SA_results %>% 
+         filter(parameter == "total_energy"),
+       aes (x = Age, y = value_mean,
+            color = otter_type)) +
+  geom_errorbar(aes(ymin = lower.ci, ymax = upper.ci)) +
+  geom_point() +
+  geom_line()
+
+
+# TODO delete this section below
        ## Change one var at a time 
 
 sensitivity_analysis <- function(change_var, var, sample_size) {
