@@ -156,65 +156,6 @@ mass_lifestage_budget <- merge_data(masses = masses,
   return(model_results)
 }
 
-## Sensitivity Analysis Functions--------------------
-
-# Change_var is the column you want to change, df is the data frame that holds that column (either wide_data or ROR_og)
-
-make_change_var_df <- function(change_var, df){ 
-  change_df <- df %>% select(Age, Sex, Lifestage, with.pup, Change_var = all_of(change_var))
-  
-  return(change_df)
-}
-
-# Set up dataframe to store all the random values (rep = 1 will be original data)
-make_random_samples <- function(sample_size, sd_change = 0.1, change_df){
-  
-  change_all_reps <- change_df
-  change_all_reps$rep <- 1 
-  
-  #  Adds the random values to data frame based on normal distribution 
-  for (i in 1:dim(change_df)[1]){
-    # Randomly sample from normal distribution 
-    changed_vals <- data.frame(Change_var = rnorm(sample_size, 
-                                                  mean = change_df$Change_var[i], 
-                                                  sd = change_df$Change_var[i]*sd_change))
-    changed_vals$rep <- 2:(sample_size+1)
-    changed_vals$Age <- change_df$Age[i]
-    changed_vals$Sex <- change_df$Sex[i]
-    changed_vals$Lifestage <- change_df$Lifestage[i]
-    changed_vals$with.pup <- change_df$with.pup[i]
-    
-    change_all_reps <- rbind(change_all_reps, changed_vals)
-  }
-  
-  return(change_all_reps)
-}
-
-# Replace the old column for the new values based on current replicate
-
-run_model_with_reps <- function(change_all_reps, df, sample_size, change_var){
-  
-  final_data <- data.frame()
-  
-  for (i in 1:(sample_size+1)){
-    
-    new_df <- df %>% 
-      select(-all_of(change_var)) %>% 
-      merge((change_all_reps %>% 
-               filter(rep == i) %>% 
-               select(-rep))) %>% 
-      rename(!!change_var := Change_var)
-    
-    # Run model for given values
-    model_setup <- build_model(budget_data = new_df, ROR = ROR_og)
-    output <- run_model(model_setup)
-    output$rep <- i
-    
-    final_data <- rbind(final_data, output)
-  }
-  
-  return(final_data)
-}
 
 # Data------------------------------------------------------------------
 masses <- read.csv(file ='mass_growth.csv') %>% 
@@ -231,6 +172,7 @@ stdev_MR_perc_time <- read.csv(file= 'Stdev_MR_perc_time.csv') %>%
   filter(!is.na(stdev_MR))
 
 # Model----------------------------------------------------------
+# This is the defaul model run with literature mean values for the parameters.
 model.run.1 <- otter_model(masses = masses,
                            act_budgets = act_budgets,
                            age_convert = age_convert)
@@ -238,27 +180,20 @@ model.run.1 <- otter_model(masses = masses,
 # Sensitivity Analysis of Model Parameters---------------------------------------
 
 # Variables that can change
-#  1. pupcost - a constant variable
-#  2. growth - in masses dataframe
-#  3. mass - in masses dataframe
-#  4. foraging and resting - in act_budgets dataframe
-#  5. metabolic rate? - in act_budgets dataframe
-
-# Add stdev to model
-# stdev_MR_perc_time <- read.csv(file= 'Stdev_MR_perc_time.csv') %>%
-#   filter(!is.na(stdev_perc_time)) %>%
-#   filter(!is.na(stdev_MR)) #%>%
-#pivot_wider(names_from = Behaviour, values_from=c(stdev_perc_time, stdev_MR))
-
-#SA_MR_with_stdev <-  merge(model.run.1, stdev_MR_perc_time, by.x = c('Sex', 'Lifestage', 'with.pup'))
+#  1. growth - in masses dataframe
+#  2. mass - in masses dataframe
+#  3. foraging and resting - in act_budgets dataframe
+#  4. metabolic rate? - in act_budgets dataframe
 
 # ** Setup SA -> Select which variable to run **
-set.seed(222)
+set.seed(22222)
 
 # PP Notes Dec 16
 # 1. For each iteration, randomly generate values for the variables in the sensitivity analysis
 # 2. Run the model for these values 
 # 3. Then store the outputs to a data frame that marks the run number
+# 4. Do 2 versions of SA: 1-all parameters vary at the same time; 2-each parameter varies independently
+# 5. For each parameter, do 4 versions of the stdev (5%, 10%, 20%, and literature value)
 
 ## Change all variables to literature variation ##
 
@@ -331,111 +266,3 @@ ggplot(SA_results %>%
   geom_errorbar(aes(ymin = lower.ci, ymax = upper.ci)) +
   geom_point() +
   geom_line()
-
-
-# TODO delete this section below
-       ## Change one var at a time 
-
-sensitivity_analysis <- function(change_var, var, sample_size) {
-  
-  testAll <- data.frame()
-  for (rep_num in c(1:sample_size)) {
-    
-    # Uncomment if changing the act_budgets df
-    act_budgets_rep <- act_budgets %>%
-      group_by(Sex, Lifestage, with.pup, Behaviour) %>%
-      merge(stdev_MR_perc_time, by = c('Sex', 'Lifestage', 'with.pup', "Behaviour")) %>%
-      # group_by(Sex, Lifestage, with.pup, Behaviour, MR) %>% 
-      mutate(MR = rnorm(1, MR, sd = 0.1)) %>% 
-      #mutate(MR = rnorm(1, MR, sd = 0.2)) %>% 
-      #mutate(MR = rnorm(1, MR, sd = 0.05)) %>% 
-      
-      #Use stdev from literature
-      # group_by(Sex, Lifestage, with.pup, Behaviour, MR, stdev_MR) %>%
-      # mutate("{{change_var}}" =  rnorm(1, mean = {{change_var}}, sd = var),
-      #        Growth )  %>% 
-      # ungroup() %>% 
-      # dplyr::select(all_of(colnames(act_budgets)))
-    
-    model_rep <- otter_model(masses = masses,
-                             act_budgets = act_budgets_rep,
-                             age_convert = age_convert) %>%
-      mutate(rep_num = rep_num) %>%
-      relocate(rep_num)
-    
-    model_all_reps <- bind_rows(model_all_reps, model_rep)
-    return(model_all_reps)
-  }
-}
-
-# model_all_rep_MR_0.05 <- sens_analysis(change_var = MR, var = 0.05, sample_size = 10)
-
-write.csv(model_all_reps, paste0("model_all_reps_", change_var, "_", var, ".csv"))
-
-# ----------------------- Analyze SA results -----------------
-# Set up for RMSE
-
-#Original data is set as rep 1
-data.true <- testAll %>% 
-  filter(rep_num == 1) %>% 
-  select(Age, Sex, with.pup, total_energy)
-
-#All replicates except original in one table
-data.reps <- testAll %>% 
-  filter(rep_num != 1) %>% 
-  select(Age, Sex, with.pup, total_energy, rep_num)
-
-# select one rep (can be a group_by later)
-data.sample <- data.reps #%>% 
-#filter(rep_num == 22)
-##------does it make sense to make a loop and look at all of the reps?
-
-calc_rmse <- function(data.true, data.sample) {
-  rmse <- sqrt( mean((data.true - data.sample)^2) )
-  return(rmse)
-}
-
-# -- DO this per life stage via group_by
-calc_rmse(data.true$total_energy, data.sample$total_energy)
-
-## Graphs --------------------------------
-
-#Males
-MR_m <-ggplot(filter(model_all_reps, Sex == "M"), 
-                   aes(x = Age, y = total_energy,
-                       color = as.factor(rep_num))) +
-  geom_line() +
-  theme(legend.position = "none") +
-  ggtitle("MR, Male")
-
-(MR_m)
-
-MR_m <- ggsave ("MR_m_5.jpeg", width = 4, height = 2.6)
-
-#Female no pup
-MR_f_no <-ggplot(filter(model_all_reps, Sex == "F", with.pup == "no"), 
-                      aes(x = Age, y = total_energy,
-                          color = as.factor(rep_num))) +
-  geom_line() +
-  theme(legend.position = "none") +
-  ggtitle("MR, Female, no pup") 
-
-(MR_f_no)
-
-MR_f_no <- ggsave ("MR_F_no_5.jpeg", width = 4, height = 2.6)
-
-#Female with Pup
-MR_f_yes <- ggplot(filter(model_all_reps, Sex == "F", with.pup == "yes"), 
-                        aes(x = Age, y = total_energy,
-                            color = as.factor(rep_num))) +
-  geom_line() +
-  theme(legend.position = "none") +
-  ggtitle("MR, Female, with pup")
-
-(MR_f_yes)
-
-MR_f_yes <- ggsave ("MR_F_yes_5.jpeg", width = 4, height = 2.6)
-
-# TODO: create loops for other variables to test
-# TODO: make SA metrics work (RMSE)
-
