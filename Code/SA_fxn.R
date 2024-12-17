@@ -306,7 +306,7 @@ sens_analysis_perc_mean <- function(sample_size, perc_sd,
         ungroup() 
     }
    
-    # Make sure percent time totals to 1 and remove unncessary columns
+    # Make sure percent time totals to 1 and remove unnecessary columns
     act_budgets_rep <- act_budgets_rep %>%
       group_by(Sex, Lifestage, with.pup) %>%
       mutate(total_perc_time = sum(perc_time)) %>%
@@ -368,6 +368,6 @@ ggplot(SA_results %>%
          filter(parameter == "total_energy"),
        aes (x = Age, y = value_mean,
             color = otter_type)) +
-  geom_errorbar(aes(ymin = lower.ci, ymax = upper.ci)) +
-  geom_point() +
-  geom_line()
+  geom_smooth(aes(ymin = lower.ci, ymax = upper.ci)) 
+  # geom_point() +
+  # geom_line()
