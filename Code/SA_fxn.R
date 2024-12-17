@@ -195,32 +195,121 @@ set.seed(22222)
 # 4. Do 2 versions of SA: 1-all parameters vary at the same time; 2-each parameter varies independently
 # 5. For each parameter, do 4 versions of the stdev (5%, 10%, 20%, and literature value)
 
-## Change all variables to literature variation ##
 
-sens_analysis_all <- function(sample_size) {
-
+# V1 and V3. SA change values based on literature by changing values one at a time
+# PP: note that here, the stdev values merged to the averages might be changed later
+#     Also note that in randomly sampling the percent time, the total of the 
+#     activities can be not equal to 1. 
+#     ! critical, percent time can be negative after doing the stdev
+sens_analysis_lit <- function(sample_size, 
+                              param2vary) {
+  
   model_all_reps <- data.frame()
   for (rep_num in c(1:sample_size)) {
     
-    masses_rep <- masses %>%  # PP This is correct
-      group_by(Age, Sex) %>%
-      mutate(Growth = rnorm(1, Growth, sd = stdev_growth)) %>%
-      mutate(Av_mass = rnorm(1, Av_mass, sd = stdev_mass)) %>%
-      ungroup()
+    # When a parameter is not being varied, use default values
+    masses_rep <- masses 
+    act_budgets_rep <- act_budgets %>% 
+      left_join(stdev_MR_perc_time, by = c('Sex', 'Lifestage', 'with.pup', "Behaviour"))
     
-    # PP: note that here, the stdev values merged to the averages might be changed later
-    #     Also note that in randomly sampling the percent time, the total of the 
-    #     activities can be not equal to 1. 
-    #     ! critical, percent time can be negative after doing the stdev
-    act_budgets_rep <- act_budgets %>%
-      left_join(stdev_MR_perc_time, by = c('Sex', 'Lifestage', 'with.pup', "Behaviour")) %>%
-      group_by(Sex, Lifestage, with.pup, Behaviour) %>%
-      mutate(MR =  rnorm(1, mean = MR, sd = stdev_MR),
-             perc_time =  rnorm(1, mean = perc_time, sd = stdev_perc_time)) %>% 
-      ungroup() %>%
+    if ("growth" %in% param2vary){
+      masses_rep <- masses_rep %>%  
+        group_by(Age, Sex) %>%
+        mutate(Growth = rnorm(1, Growth, sd = stdev_growth)) %>%
+        ungroup()
+    }
+    
+    if ("mass" %in% param2vary){
+      masses_rep <- masses_rep %>%  
+        group_by(Age, Sex) %>%
+        mutate(Av_mass = rnorm(1, Av_mass, sd = stdev_mass)) %>%
+        ungroup()
+    }
+    
+    if ("MR" %in% param2vary){
+      act_budgets_rep <- act_budgets_rep %>%
+        group_by(Sex, Lifestage, with.pup, Behaviour) %>%
+        mutate(MR =  rnorm(1, mean = MR, sd = stdev_MR)) %>% 
+        ungroup() 
+    }
+    
+    if("perc_time" %in% param2vary){
+      act_budgets_rep <- act_budgets_rep %>%
+        group_by(Sex, Lifestage, with.pup, Behaviour) %>%
+        mutate(perc_time =  rnorm(1, mean = perc_time, sd = stdev_perc_time)) %>% 
+        ungroup() 
+    }
+    
+    # Make sure percent time totals to 1 and remove unncessary columns
+    act_budgets_rep <- act_budgets_rep %>%
       group_by(Sex, Lifestage, with.pup) %>%
-    # Force percent time to total to 1 ... TODO resolve negative values
-    mutate(total_perc_time = sum(perc_time)) %>%
+      mutate(total_perc_time = sum(perc_time)) %>%
+      ungroup() %>% 
+      mutate(perc_time = perc_time / total_perc_time) %>% 
+      dplyr::select(all_of(colnames(act_budgets)))
+    
+
+    # This runs the model with the randomly varied parameters
+    model_rep <- otter_model(masses = masses_rep,
+                             act_budgets = act_budgets_rep,
+                             age_convert = age_convert) %>%
+      mutate(rep_num = rep_num) %>%
+      relocate(rep_num)
+    
+    model_all_reps <- bind_rows(model_all_reps, model_rep)
+    
+  }
+  return(model_all_reps)
+}
+
+
+# V2 and V4. SA by changing % of the mean for each parameter at a time or all together
+# The value for perc_sd are fractions (0.05, 0.1, 0.20)
+# values for param2vary are: c(growth, mass, MR, perc_time). 
+#   If varying all, include all there values in the array.
+sens_analysis_perc_mean <- function(sample_size, perc_sd,
+                                           param2vary) {
+  
+  model_all_reps <- data.frame()
+  for (rep_num in c(1:sample_size)) {
+    
+    # When a parameter is not being varied, use default values
+    masses_rep <- masses 
+    act_budgets_rep <- act_budgets %>% 
+      left_join(stdev_MR_perc_time, by = c('Sex', 'Lifestage', 'with.pup', "Behaviour"))
+    
+    if ("growth" %in% param2vary){
+      masses_rep <- masses_rep %>%  
+        group_by(Age, Sex) %>%
+        mutate(Growth = rnorm(1, Growth, sd = Growth*perc_sd)) %>%
+        ungroup()
+    }
+    
+    if ("mass" %in% param2vary){
+      masses_rep <- masses_rep %>%  
+        group_by(Age, Sex) %>%
+        mutate(Av_mass = rnorm(1, Av_mass, sd = Av_mass*perc_sd)) %>%
+        ungroup()
+    }
+    
+    if ("MR" %in% param2vary){
+      act_budgets_rep <- act_budgets_rep %>%
+        group_by(Sex, Lifestage, with.pup, Behaviour) %>%
+        mutate(MR =  rnorm(1, mean = MR, sd = MR*perc_sd)) %>% 
+        ungroup() 
+    }
+    
+    if("perc_time" %in% param2vary){
+      act_budgets_rep <- act_budgets_rep %>%
+        group_by(Sex, Lifestage, with.pup, Behaviour) %>%
+        mutate(perc_time =  rnorm(1, mean = perc_time, sd = perc_time*perc_sd)) %>% 
+        ungroup() 
+    }
+   
+    # Make sure percent time totals to 1 and remove unncessary columns
+    act_budgets_rep <- act_budgets_rep %>%
+      group_by(Sex, Lifestage, with.pup) %>%
+      mutate(total_perc_time = sum(perc_time)) %>%
       ungroup() %>% 
       mutate(perc_time = perc_time / total_perc_time) %>% 
       dplyr::select(all_of(colnames(act_budgets)))
@@ -238,9 +327,25 @@ sens_analysis_all <- function(sample_size) {
   return(model_all_reps)
 }
 
-testAll <- sens_analysis_all(sample_size = 1000)
+# Run SA ---------------
 
+# V1. Literature stdevs, vary all params at the same time
+testAll <- sens_analysis_lit(sample_size = 99,
+                             param2vary = c("growth","mass","MR","perc_time"))
 
+# V2. Percent of mean stdevs, vary all params at the same time
+testAll <- sens_analysis_perc_mean(sample_size = 99, perc_sd = 0.05,
+                                   param2vary = c("growth","mass","MR","perc_time"))
+
+# V3. Literature stdevs, vary one param at a time
+testAll <- sens_analysis_lit(sample_size = 99,
+                             param2vary = c("growth"))
+
+# V4. Percent of mean stdevs, vary one param at a time
+testAll <- sens_analysis_perc_mean(sample_size = 99, perc_sd = 0.2,
+                                   param2vary = c("MR"))
+
+# ***Process SA results***
 # TODO calculate the average and standard error across replicates
 SA_results <- testAll %>% 
   pivot_longer(cols = c(total_energy, Growth:new_resting_cost),
@@ -251,10 +356,10 @@ SA_results <- testAll %>%
             n = n(),
             .groups = "drop") %>% 
   # Calculate standard error and 95% confidence intervals
-  mutate(value_SE = value_mean/sqrt(value_sd),
+  mutate(value_SE = value_sd/sqrt(n),
          lower.ci = value_mean - qt(1 - (0.05 / 2), n - 1) * value_SE,
          upper.ci = value_mean + qt(1 - (0.05 / 2), n - 1) * value_SE) %>% 
-  # group types of otterr
+  # group types of otters
   mutate(otter_type = paste(Sex, with.pup))
 
 
