@@ -1,25 +1,23 @@
 # Model Otter from Excel into R
 
-#Date Created: March 14, 2023
+#Date Created: Dec 2024
 
 #Author: Julia Adelsheim
-#Collaborators: Izzy Morgante (Nov, Dec 2022, Jan 2023), Andreas Novotny (12-2-2022), Patrick Pata (1-19-23- 3-14-23)
+#Collaborators: Andreas Novotny 
 
 #Platform: Mac
-#Purpose of Script: Change ROR by set amounts and see how energy needs change
+#Purpose of Script: 
 
 ## Coding Questions-----------------------------------------------------
 
-# Heat increment of feeding in otters, digestive losses- are they included?
-
 # To Do ------------------------------------------------------------------
-
 
 ## Start-----------------------------------------------------------------------
 #File Name: Otter Model R v4
 
 rm(list = ls())
 
+setwd("~/Documents/Thesis/otteR")
 # Packages--------------------------------------------------------------
 library(dplyr)
 library(tidyverse)
@@ -41,25 +39,65 @@ act_budgets <- read.csv(file = './Data/ActivityBudgets.csv')
 age_convert <- read.csv(file = './Data/age_lifestage.csv')
 
 # Functions ------------------------------------------------------------
+
+# Converts raw csv files of masses, growth rates, metabolic rates, and costs of behaviors into
+#  a merged dataframe.
+
+merge_data <- function(masses, act_budgets, age_convert) {
+  # Join data frames to create a table with MASS, GROWTH, and METABOLIC RATES per behavior
+  mass_lifestage <- merge(masses, age_convert, by.x = c('Age', 'Sex')) #, all.x = TRUE) # would make blank rows
+  mass_lifestage_budget <- merge(mass_lifestage, act_budgets, by.x = c('Sex', 'Lifestage'))  %>% 
+    # Calculate mass specific metabolic rates: first step
+    mutate(metabolic_rates = Av_mass * MR) %>% 
+    # Calculate actual (additional) metabolic costs
+    mutate(actual_costs = metabolic_rates * min_per_day)
+  return(mass_lifestage_budget)
+}
+
+
+# Re-sort data into a wider pivot table to columns specific to behavior: 
+make_wide_data <- function(mass_lifestage_budget) {
+  mass_lifestage_budget_wide <- mass_lifestage_budget %>%
+    # Make dataframe in a wide format
+    pivot_wider(names_from = Behaviour, values_from=c(perc_time, min_per_day, MR, metabolic_rates, actual_costs)) %>% 
+    mutate(resting_cost_wout_foraging = metabolic_rates_rest * (min_per_day_rest + min_per_day_forage)) %>% 
+    # Calculate sum of actual costs
+    mutate(sum_actual_costs = actual_costs_rest + actual_costs_activity + actual_costs_forage) %>% 
+    # Modify pup costs
+    mutate(pup_cost = ifelse(with.pup == 'yes', cost_pup, 0)) %>% 
+    # Calculate Original ROR
+    mutate(ROR = (sum_actual_costs + pup_cost + Growth)/(min_per_day_forage)) %>%
+    # Make ROR repeat for adults
+    mutate(ROR = ifelse(Lifestage != "adult", ROR,
+                        ifelse(Sex == "M", pull(filter(.data = ., Sex == "M", Age == 3), ROR),
+                               ifelse(with.pup == "no", pull(filter(.data = ., Sex == "F", with.pup=="no", Age == 2), ROR),
+                                      pull(filter(.data = ., Sex == "F", with.pup=="yes", Age == 2), ROR)
+                               ))))
+}
+
+#Matches excel model to here
+
 # Make an ROR function so that I don't have to repeat the code every time I change conditions
 # Data is the wide_data table with behavior specific values, returns a dataframe that calculated
 #  from profits, time_needed_to_forage, and new_perc_time_forage
-calculate_foraging_time <- function(data) {
+calculate_foraging_time <- function(mass_lifestage_budget_wide) {
   
-  output <- data %>% 
+  mass_lifestage_budget_wide <- mass_lifestage_budget_wide %>% 
     
     # Calculate Profits
     mutate(profits = ROR - (metabolic_rates_forage - metabolic_rates_rest)) %>% 
     
     # Calculate foraging time needed
-    mutate(time_needed_to_forage = (actual_costs_activity + resting_cost_wout_foraging)/ profits) %>% 
+    mutate(time_needed_to_forage = (resting_cost_wout_foraging + actual_costs_activity + Growth + pup_cost)/ profits) %>% 
     
     #Calc % of day foraging
     mutate(new_perc_time_forage = time_needed_to_forage/total_min_per_day) %>% 
     
     select(Sex, Age, Lifestage, with.pup, ROR, profits, time_needed_to_forage, new_perc_time_forage)
-}
+  
+  }
 
+## Good to this point ##
 
 # This function builds parts of the model. Takes in a wide dataframe of activity specific rates and costs.
 #  Returns new costs of foraging.
@@ -74,8 +112,6 @@ build_model <- function(budget_data, ROR){
     # Add new foraging % of day and minutes per day values
     select(c(Sex, Age, Lifestage, with.pup, pup_cost, Growth, perc_time_activity, min_per_day_activity, actual_costs_activity, new_perc_time_forage, metabolic_rates_forage, time_needed_to_forage, metabolic_rates_rest)) %>%
     arrange(Age, Sex)
-  
-  #  Yellow cells in excel for these variables 
   
   # set up the model table- start calculating new values for foraging
   # model_setup <- merge(model_setup, foraging_met_rate)
@@ -105,39 +141,6 @@ run_model <- function(mod_setup){
   return(mod_setup)
 }
 
-# Converts raw csv files of masses, growth rates, metabolic rates, and costs of behaviors into
-#  a merged dataframe.
-merge_data <- function(masses, act_budgets, age_convert) {
-  # Join data frames to create a table with MASS, GROWTH, and METABOLIC RATES per behavior
-  mass_lifestage <- merge(masses, age_convert, by.x = c('Age', 'Sex')) #, all.x = TRUE) # would make blank rows
-  mass_lifestage_budget <- merge(mass_lifestage, act_budgets, by.x = c('Sex', 'Lifestage'))  %>% 
-    # Calculate metabolic rates
-    mutate(metabolic_rates = Av_mass * MR) %>% 
-    # Calculate actual (additional) metabolic costs
-    mutate(actual_costs = metabolic_rates * min_per_day)
-  return(mass_lifestage_budget)
-}
-
-# Re-sort data into a wider pivot table to columns specific to behavior: 
-
-make_wide_data <- function(mass_lifestage_budget) {
-  mass_lifestage_budget_wide <- mass_lifestage_budget %>%
-    # Make dataframe in a wide format
-    pivot_wider(names_from = Behaviour, values_from=c(perc_time, min_per_day, MR, metabolic_rates, actual_costs)) %>% 
-    mutate(resting_cost_wout_foraging = metabolic_rates_rest * (min_per_day_rest + min_per_day_forage)) %>% 
-    # Calculate sum of actual costs
-    mutate(sum_actual_costs = actual_costs_rest + actual_costs_activity + actual_costs_forage) %>% 
-    # Modify pup costs
-    mutate(pup_cost = ifelse(with.pup == 'yes', cost_pup, 0)) %>% 
-    # Calculate Original ROR
-    mutate(ROR = (sum_actual_costs + pup_cost + Growth)/(min_per_day_forage)) %>%
-    # Make ROR repeat for adults
-    mutate(ROR = ifelse(Lifestage != "adult", ROR,
-                        ifelse(Sex == "M", pull(filter(.data = ., Sex == "M", Age == 3), ROR),
-                               ifelse(with.pup == "no", pull(filter(.data = ., Sex == "F", with.pup=="no", Age == 2), ROR),
-                                      pull(filter(.data = ., Sex == "F", with.pup=="yes", Age == 2), ROR)
-                               ))))
-}
 
 # Runs through the entire otter bioenergetics model. 
 #   Receives the raw data frame of model variables.
@@ -182,6 +185,9 @@ model_run_og %>%
 # Cost of having pup
 
 #---- Graphs ----
+
+
+
 
 #---- Activity Budget Graphs---- 
 

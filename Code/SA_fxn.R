@@ -28,7 +28,7 @@ library(tidyverse)
 library(ggplot2)
 
 #Constants--------------------------------------------------------------
-cost_pup <- 3931
+# cost_pup <- 3931 # TODO to change
 total_min_per_day <- 1440
 
 # Functions ------------------------------------------------------------
@@ -111,7 +111,7 @@ merge_data <- function(masses, act_budgets, age_convert) {
 
 # Re-sort data into a wider pivot table to columns specific to behavior: 
 #   MR_*, metabolic_rates_*, min_per_day_*, perc_time_*, actual_costs_*
- make_wide_data <- function(mass_lifestage_budget) {
+ make_wide_data <- function(mass_lifestage_budget, cost_pup) {
   mass_lifestage_budget_wide <- mass_lifestage_budget %>%
     # Make dataframe in a wide format
     pivot_wider(names_from = Behaviour, values_from=c(perc_time, min_per_day, MR, metabolic_rates, actual_costs)) %>% 
@@ -133,15 +133,11 @@ merge_data <- function(masses, act_budgets, age_convert) {
 # Runs through the entire otter bioenergetics model. 
 #   Receives the raw data frame of model variables.
 #   Returns a dataframe of the calculated total energy expenditure.
-mass_lifestage_budget <- merge_data(masses = masses,
-                                    act_budgets = act_budgets,
-                                    age_convert = age_convert)
-
- otter_model <- function(masses, act_budgets, age_convert) {
+ otter_model <- function(masses, act_budgets, age_convert, cost_pup) {
   mass_lifestage_budget <- merge_data(masses = masses,
                                       act_budgets = act_budgets,
                                       age_convert = age_convert)
-  wide_data <- make_wide_data(mass_lifestage_budget)
+  wide_data <- make_wide_data(mass_lifestage_budget, cost_pup)
   
   # Changing conditions of ROR
   ROR_og <- calculate_foraging_time(wide_data) # Original ROR
@@ -175,7 +171,8 @@ stdev_MR_perc_time <- read.csv(file= 'Stdev_MR_perc_time.csv') %>%
 # This is the defaul model run with literature mean values for the parameters.
 model.run.1 <- otter_model(masses = masses,
                            act_budgets = act_budgets,
-                           age_convert = age_convert)
+                           age_convert = age_convert,
+                           cost_pup = 3931)
 
 # Sensitivity Analysis of Model Parameters---------------------------------------
 
@@ -240,6 +237,7 @@ sens_analysis_lit <- function(sample_size,
         ungroup() 
     }
     
+    
     # Make sure percent time totals to 1 and remove unncessary columns
     act_budgets_rep <- act_budgets_rep %>%
       group_by(Sex, Lifestage, with.pup) %>%
@@ -252,7 +250,8 @@ sens_analysis_lit <- function(sample_size,
     # This runs the model with the randomly varied parameters
     model_rep <- otter_model(masses = masses_rep,
                              act_budgets = act_budgets_rep,
-                             age_convert = age_convert) %>%
+                             age_convert = age_convert,
+                             cost_pup = 3931) %>%
       mutate(rep_num = rep_num) %>%
       relocate(rep_num)
     
@@ -305,6 +304,12 @@ sens_analysis_perc_mean <- function(sample_size, perc_sd,
         mutate(perc_time =  rnorm(1, mean = perc_time, sd = perc_time*perc_sd)) %>% 
         ungroup() 
     }
+    
+    if("cost_pup" %in% param2vary) {
+      cost_pup <- rnorm(1, mean = 3931, sd = 3931*perc_sd)
+    } else {
+      cost_pup <- 3931
+    }
    
     # Make sure percent time totals to 1 and remove unnecessary columns
     act_budgets_rep <- act_budgets_rep %>%
@@ -317,7 +322,8 @@ sens_analysis_perc_mean <- function(sample_size, perc_sd,
     # This runs the model with the randomly varied parameters
     model_rep <- otter_model(masses = masses_rep,
                              act_budgets = act_budgets_rep,
-                             age_convert = age_convert) %>%
+                             age_convert = age_convert,
+                             cost_pup = cost_pup) %>%
       mutate(rep_num = rep_num) %>%
       relocate(rep_num)
     
@@ -343,7 +349,7 @@ testAll <- sens_analysis_lit(sample_size = 99,
 
 # V4. Percent of mean stdevs, vary one param at a time
 testAll <- sens_analysis_perc_mean(sample_size = 99, perc_sd = 0.2,
-                                   param2vary = c("MR"))
+                                   param2vary = c("cost_pup"))
 
 # ***Process SA results***
 # TODO calculate the average and standard error across replicates
@@ -368,6 +374,6 @@ ggplot(SA_results %>%
          filter(parameter == "total_energy"),
        aes (x = Age, y = value_mean,
             color = otter_type)) +
-  geom_smooth(aes(ymin = lower.ci, ymax = upper.ci)) 
-  # geom_point() +
-  # geom_line()
+  # geom_smooth(aes(ymin = lower.ci, ymax = upper.ci)) 
+  geom_point() +
+  geom_line()
