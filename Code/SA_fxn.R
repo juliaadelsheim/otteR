@@ -1,20 +1,9 @@
 #Sensitivity Analysis for Growth
 
-#Date Created: Feb 13, 2023
+#Date Created: 
 
 #Author: Julia Adelsheim
-#Collaborators: Patrick Pata, Izzy Morgante, Andreas Novotny
-
-#Platform: Mac
-#Purpose of Script: Code a sensitivity analysis my otter model
-
-## Coding Questions-----------------------------------------------------
-
-# Heat increment of feeding in otters, digestive losses- are they included?
-
-# To Do------------------------------------------------------------------
-
-# Remove +1 original, run models and bind the original one after
+#Collaborators: Patrick Pata, Andreas Novotny, Izzy Morgante
 
 ##Start-----------------------------------------------------------------------
 
@@ -28,29 +17,79 @@ library(tidyverse)
 library(ggplot2)
 
 #Constants--------------------------------------------------------------
-# cost_pup <- 3931 # TODO to change
+cost_pup <- 3931 # TODO to change
 total_min_per_day <- 1440
 
+# Data------------------------------------------------------------------
+masses <- read.csv(file ='mass_growth.csv') 
+  # filter(!is.na(Age)) # remove empty rows
+
+act_budgets <- read.csv(file = 'ActivityBudgets.csv') 
+  # filter(!is.na(MR)) # remove empty rows
+
+age_convert <- read.csv(file = 'age_lifestage.csv')
+
+# TODO change values for standard deviation later
+# stdev_MR_perc_time <- read.csv(file= 'Stdev_MR_perc_time.csv') %>%
+#   filter(!is.na(stdev_perc_time)) %>%
+#   filter(!is.na(stdev_MR))
+
 # Functions ------------------------------------------------------------
+
+# Converts raw csv files of masses, growth rates, metabolic rates, and costs of behaviors into
+#  a merged dataframe.
+merge_data <- function(masses, act_budgets, age_convert) {
+  # Join data frames to create a table with MASS, GROWTH, and METABOLIC RATES per behavior
+  mass_lifestage <- merge(masses, age_convert, by.x = c('Age', 'Sex')) #, all.x = TRUE) # would make blank rows
+  mass_lifestage_budget <- merge(mass_lifestage, act_budgets, by.x = c('Sex', 'Lifestage'))  %>% 
+    # Calculate metabolic rates
+    mutate(metabolic_rates = Av_mass * MR) %>% 
+    # Calculate actual (additional) metabolic costs
+    mutate(actual_costs = metabolic_rates * min_per_day)
+  return(mass_lifestage_budget)
+}
+
+# Re-sort data into a wider pivot table to columns specific to behavior: 
+#   MR_*, metabolic_rates_*, min_per_day_*, perc_time_*, actual_costs_*
+make_wide_data <- function(mass_lifestage_budget, cost_pup) {
+  mass_lifestage_budget_wide <- mass_lifestage_budget %>%
+    # Make dataframe in a wide format
+    pivot_wider(names_from = Behaviour, values_from=c(perc_time, min_per_day, MR, metabolic_rates, actual_costs)) %>% 
+    mutate(resting_cost_wout_foraging = metabolic_rates_rest * (min_per_day_rest + min_per_day_forage)) %>% 
+    # Calculate sum of actual costs
+    mutate(sum_actual_costs = actual_costs_rest + actual_costs_activity + actual_costs_forage) %>% 
+    # Modify pup costs
+    mutate(pup_cost = ifelse(with.pup == 'yes', cost_pup, 0)) %>% 
+    # Calculate ROR
+    mutate(ROR = (sum_actual_costs + pup_cost + Growth)/(min_per_day_forage)) %>%
+    # Make ROR repeat for adults
+    mutate(ROR = ifelse(Lifestage != "adult", ROR,
+                        ifelse(Sex == "M", pull(filter(.data = ., Sex == "M", Age == 3), ROR),
+                               ifelse(with.pup == "no", pull(filter(.data = ., Sex == "F", with.pup=="no", Age == 2), ROR),
+                                      pull(filter(.data = ., Sex == "F", with.pup=="yes", Age == 2), ROR)
+                               ))))
+}
+
+
 # Make an ROR function so that I don't have to repeat the code every time I change conditions
 # Data is the wide_data table with behavior specific values, returns a dataframe that calculated
 #  from profits, time_needed_to_forage, and new_perc_time_forage
-calculate_foraging_time <- function(data) {
+calculate_foraging_time <- function(mass_lifestage_budget_wide) {
   
-  output <- data %>% 
+  mass_lifestage_budget_wide <- mass_lifestage_budget_wide %>% 
     
     # Calculate Profits
     mutate(profits = ROR - (metabolic_rates_forage - metabolic_rates_rest)) %>% 
     
     # Calculate foraging time needed
-    mutate(time_needed_to_forage = (actual_costs_activity + resting_cost_wout_foraging)/ profits) %>% 
+    mutate(time_needed_to_forage = (resting_cost_wout_foraging + actual_costs_activity + Growth + pup_cost)/ profits) %>% 
     
     #Calc % of day foraging
     mutate(new_perc_time_forage = time_needed_to_forage/total_min_per_day) %>% 
     
     select(Sex, Age, Lifestage, with.pup, ROR, profits, time_needed_to_forage, new_perc_time_forage)
+  
 }
-
 
 # This function builds parts of the model. Takes in a wide dataframe of activity specific rates and costs.
 #  Returns new costs of foraging.
@@ -87,6 +126,7 @@ build_model <- function(budget_data, ROR){
   return(model_setup)
 }
 
+
 run_model <- function(mod_setup){
   mod_setup <- mod_setup %>% 
     
@@ -96,42 +136,9 @@ run_model <- function(mod_setup){
   return(mod_setup)
 }
 
-# Converts raw csv files of masses, growth rates, metabolic rates, and costs of behaviors into
-#  a merged dataframe.
-merge_data <- function(masses, act_budgets, age_convert) {
-  # Join data frames to create a table with MASS, GROWTH, and METABOLIC RATES per behavior
-  mass_lifestage <- merge(masses, age_convert, by.x = c('Age', 'Sex')) #, all.x = TRUE) # would make blank rows
-  mass_lifestage_budget <- merge(mass_lifestage, act_budgets, by.x = c('Sex', 'Lifestage'))  %>% 
-    # Calculate metabolic rates
-    mutate(metabolic_rates = Av_mass * MR) %>% 
-    # Calculate actual (additional) metabolic costs
-    mutate(actual_costs = metabolic_rates * min_per_day)
-  return(mass_lifestage_budget)
-}
-
-# Re-sort data into a wider pivot table to columns specific to behavior: 
-#   MR_*, metabolic_rates_*, min_per_day_*, perc_time_*, actual_costs_*
- make_wide_data <- function(mass_lifestage_budget, cost_pup) {
-  mass_lifestage_budget_wide <- mass_lifestage_budget %>%
-    # Make dataframe in a wide format
-    pivot_wider(names_from = Behaviour, values_from=c(perc_time, min_per_day, MR, metabolic_rates, actual_costs)) %>% 
-    mutate(resting_cost_wout_foraging = metabolic_rates_rest * (min_per_day_rest + min_per_day_forage)) %>% 
-    # Calculate sum of actual costs
-    mutate(sum_actual_costs = actual_costs_rest + actual_costs_activity + actual_costs_forage) %>% 
-    # Modify pup costs
-    mutate(pup_cost = ifelse(with.pup == 'yes', cost_pup, 0)) %>% 
-    # Calculate ROR
-    mutate(ROR = (sum_actual_costs + pup_cost + Growth)/(min_per_day_forage)) %>%
-    # Make ROR repeat for adults
-    mutate(ROR = ifelse(Lifestage != "adult", ROR,
-                        ifelse(Sex == "M", pull(filter(.data = ., Sex == "M", Age == 3), ROR),
-                               ifelse(with.pup == "no", pull(filter(.data = ., Sex == "F", with.pup=="no", Age == 2), ROR),
-                                      pull(filter(.data = ., Sex == "F", with.pup=="yes", Age == 2), ROR)
-                               ))))
-}
-
-# Runs through the entire otter bioenergetics model. 
+# Runs through the entire model. 
 #   Receives the raw data frame of model variables.
+
 #   Returns a dataframe of the calculated total energy expenditure.
  otter_model <- function(masses, act_budgets, age_convert, cost_pup) {
   mass_lifestage_budget <- merge_data(masses = masses,
@@ -152,20 +159,6 @@ merge_data <- function(masses, act_budgets, age_convert) {
   return(model_results)
 }
 
-
-# Data------------------------------------------------------------------
-masses <- read.csv(file ='mass_growth.csv') %>% 
-  filter(!is.na(Age)) # remove empty rows
-
-act_budgets <- read.csv(file = 'ActivityBudgets.csv') %>% 
-  filter(!is.na(MR)) # remove empty rows
-
-age_convert <- read.csv(file = 'age_lifestage.csv')
-
-# TODO change values for standard deviation later
-stdev_MR_perc_time <- read.csv(file= 'Stdev_MR_perc_time.csv') %>%
-  filter(!is.na(stdev_perc_time)) %>%
-  filter(!is.na(stdev_MR))
 
 # Model----------------------------------------------------------
 # This is the defaul model run with literature mean values for the parameters.
@@ -336,12 +329,12 @@ sens_analysis_perc_mean <- function(sample_size, perc_sd,
 # Run SA ---------------
 
 # V1. Literature stdevs, vary all params at the same time
-testAll <- sens_analysis_lit(sample_size = 99,
-                             param2vary = c("growth","mass","MR","perc_time"))
+testAll <- sens_analysis_lit(sample_size = 1000,
+                             param2vary = c("growth","mass","MR","perc_time", "cost_pup"))
 
 # V2. Percent of mean stdevs, vary all params at the same time
-testAll <- sens_analysis_perc_mean(sample_size = 99, perc_sd = 0.05,
-                                   param2vary = c("growth","mass","MR","perc_time"))
+testAll <- sens_analysis_perc_mean(sample_size = 100, perc_sd = 0.10,
+                                   param2vary = c("growth","mass","MR","perc_time", "cost_pup"))
 
 # V3. Literature stdevs, vary one param at a time
 testAll <- sens_analysis_lit(sample_size = 99,
@@ -356,7 +349,7 @@ testAll <- sens_analysis_perc_mean(sample_size = 99, perc_sd = 0.2,
 SA_results <- testAll %>% 
   pivot_longer(cols = c(total_energy, Growth:new_resting_cost),
                names_to = "parameter", values_to = "value") %>% 
-  group_by(Sex, Age, Lifestage, with.pup, pup_cost, parameter) %>% 
+  group_by(Sex, Age, Lifestage, with.pup, parameter) %>% #deleted pup_cost
   summarise(value_mean = mean(value),
             value_sd = sd(value),
             n = n(),
@@ -374,6 +367,7 @@ ggplot(SA_results %>%
          filter(parameter == "total_energy"),
        aes (x = Age, y = value_mean,
             color = otter_type)) +
-  # geom_smooth(aes(ymin = lower.ci, ymax = upper.ci)) 
+  geom_errorbar(aes(ymin = lower.ci, ymax = upper.ci)) +
   geom_point() +
   geom_line()
+   # geom_smooth(aes(ymin = lower.ci, ymax = upper.ci))

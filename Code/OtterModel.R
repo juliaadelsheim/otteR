@@ -75,8 +75,6 @@ make_wide_data <- function(mass_lifestage_budget) {
                                ))))
 }
 
-#Matches excel model to here
-
 # Make an ROR function so that I don't have to repeat the code every time I change conditions
 # Data is the wide_data table with behavior specific values, returns a dataframe that calculated
 #  from profits, time_needed_to_forage, and new_perc_time_forage
@@ -97,7 +95,6 @@ calculate_foraging_time <- function(mass_lifestage_budget_wide) {
   
   }
 
-## Good to this point ##
 
 # This function builds parts of the model. Takes in a wide dataframe of activity specific rates and costs.
 #  Returns new costs of foraging.
@@ -172,21 +169,13 @@ model_run_og <- otter_model(masses = masses,
                             act_budgets = act_budgets,
                             age_convert = age_convert)
 
+#---- Graphs ----
 
-
+# Plain ol line graph 
 model_run_og %>% 
   mutate(Group = paste(Sex, with.pup)) %>% 
   ggplot() +
   geom_line(aes(Age, total_energy, color = Group))
-
-# Body mass per age sex and life stage - growth rate
-# Metabolic rates
-# Percent time of day (Activity budget)
-# Cost of having pup
-
-#---- Graphs ----
-
-
 
 
 #---- Activity Budget Graphs---- 
