@@ -30,9 +30,9 @@ act_budgets <- read.csv(file = 'ActivityBudgets.csv')
 age_convert <- read.csv(file = 'age_lifestage.csv')
 
 # TODO change values for standard deviation later
-# stdev_MR_perc_time <- read.csv(file= 'Stdev_MR_perc_time.csv') %>%
-#   filter(!is.na(stdev_perc_time)) %>%
-#   filter(!is.na(stdev_MR))
+stdev_MR_perc_time <- read.csv(file= 'Stdev_MR_perc_time.csv') %>%
+  filter(!is.na(stdev_perc_time)) %>%
+  filter(!is.na(stdev_MR))
 
 # Functions ------------------------------------------------------------
 
@@ -42,6 +42,8 @@ merge_data <- function(masses, act_budgets, age_convert) {
   # Join data frames to create a table with MASS, GROWTH, and METABOLIC RATES per behavior
   mass_lifestage <- merge(masses, age_convert, by.x = c('Age', 'Sex')) #, all.x = TRUE) # would make blank rows
   mass_lifestage_budget <- merge(mass_lifestage, act_budgets, by.x = c('Sex', 'Lifestage'))  %>% 
+    #Calculate minutes per day from % of day
+    mutate(min_per_day = perc_time * total_min_per_day) %>% 
     # Calculate metabolic rates
     mutate(metabolic_rates = Av_mass * MR) %>% 
     # Calculate actual (additional) metabolic costs
@@ -329,11 +331,11 @@ sens_analysis_perc_mean <- function(sample_size, perc_sd,
 # Run SA ---------------
 
 # V1. Literature stdevs, vary all params at the same time
-testAll <- sens_analysis_lit(sample_size = 1000,
+testAll <- sens_analysis_lit(sample_size = 10,
                              param2vary = c("growth","mass","MR","perc_time", "cost_pup"))
 
 # V2. Percent of mean stdevs, vary all params at the same time
-testAll <- sens_analysis_perc_mean(sample_size = 100, perc_sd = 0.10,
+testAll <- sens_analysis_perc_mean(sample_size = 10, perc_sd = 0.10,
                                    param2vary = c("growth","mass","MR","perc_time", "cost_pup"))
 
 # V3. Literature stdevs, vary one param at a time
@@ -341,7 +343,7 @@ testAll <- sens_analysis_lit(sample_size = 99,
                              param2vary = c("growth"))
 
 # V4. Percent of mean stdevs, vary one param at a time
-testAll <- sens_analysis_perc_mean(sample_size = 99, perc_sd = 0.2,
+testAll <- sens_analysis_perc_mean(sample_size = 1000, perc_sd = 0.2,
                                    param2vary = c("cost_pup"))
 
 # ***Process SA results***
@@ -361,13 +363,48 @@ SA_results <- testAll %>%
   # group types of otters
   mutate(otter_type = paste(Sex, with.pup))
 
+#Separate out standard error and new mean values from the Monte Carlo simulations 
+error_results <- SA_results %>% 
+  filter(parameter == "total_energy")
 
 # Plot total_energy
-ggplot(SA_results %>% 
+aaaplot <- 
+  ggplot(SA_results %>% 
          filter(parameter == "total_energy"),
        aes (x = Age, y = value_mean,
             color = otter_type)) +
   geom_errorbar(aes(ymin = lower.ci, ymax = upper.ci)) +
   geom_point() +
   geom_line()
-   # geom_smooth(aes(ymin = lower.ci, ymax = upper.ci))
+# geom_smooth(aes(ymin = lower.ci, ymax = upper.ci))
+print(aaaplot)
+
+## ---- Save Outputs ----
+# TODO need to write in parameter and sd value to file name
+
+# Extract input values from the testAll object
+perc_sd <- 0.2  # As used in the function call
+param2vary <- "cost_pup"  # As used in the function call
+
+#Designate location to save them in 
+folder_path <- "~/Documents/Thesis/otteR/Results"
+
+# Create the filename using the input values
+filename <- paste0(folder_path,"/SA_results_perc_sd_", perc_sd, "_param_", param2vary, ".csv")
+# Save the results to CSV
+write.csv(SA_results, file = filename, row.names = FALSE)
+
+#Save file with only TEE values
+filename <- paste0(folder_path,"/SA_results_TEE_", perc_sd, "_param_", param2vary, ".csv")
+# Save the results to CSV
+write.csv(error_results, file = filename, row.names = FALSE)
+
+TODO # NOT WORKING 
+# ## ---- Save Plots -----
+# #Designate location to save them in 
+# folder_path <- "~/Documents/Thesis/otteR/Plots"
+# # Construct the full path for the plot file
+# aaaplot <- paste0(folder_path, "/SA_plot_perc_sd_", perc_sd, "_param_", param2vary, ".png")
+# # Save the ggplot figure
+# ggsave(aaaplot, plot = plot, width = 8, height = 6)
+
