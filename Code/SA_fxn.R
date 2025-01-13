@@ -343,7 +343,7 @@ testAll <- sens_analysis_lit(sample_size = 99,
                              param2vary = c("growth"))
 
 # V4. Percent of mean stdevs, vary one param at a time
-testAll <- sens_analysis_perc_mean(sample_size = 1000, perc_sd = 0.2,
+testAll <- sens_analysis_perc_mean(sample_size = 1000, perc_sd = 0.05,
                                    param2vary = c("cost_pup"))
 
 # ***Process SA results***
@@ -383,7 +383,7 @@ print(aaaplot)
 # TODO need to write in parameter and sd value to file name
 
 # Extract input values from the testAll object
-perc_sd <- 0.2  # As used in the function call
+perc_sd <- 0.05  # As used in the function call
 param2vary <- "cost_pup"  # As used in the function call
 
 #Designate location to save them in 
