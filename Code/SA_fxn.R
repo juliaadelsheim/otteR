@@ -331,7 +331,7 @@ sens_analysis_perc_mean <- function(sample_size, perc_sd,
 # Run SA ---------------
 
 # V1. Literature stdevs, vary all params at the same time
-testAll <- sens_analysis_lit(sample_size = 10,
+testAll <- sens_analysis_lit(sample_size = 1000,
                              param2vary = c("growth","mass","MR","perc_time", "cost_pup"))
 
 # V2. Percent of mean stdevs, vary all params at the same time
@@ -339,12 +339,12 @@ testAll <- sens_analysis_perc_mean(sample_size = 10, perc_sd = 0.10,
                                    param2vary = c("growth","mass","MR","perc_time", "cost_pup"))
 
 # V3. Literature stdevs, vary one param at a time
-testAll <- sens_analysis_lit(sample_size = 99,
-                             param2vary = c("growth"))
+testAll <- sens_analysis_lit(sample_size = 100,
+                             param2vary = c("perc_time"))
 
 # V4. Percent of mean stdevs, vary one param at a time
-testAll <- sens_analysis_perc_mean(sample_size = 1000, perc_sd = 0.05,
-                                   param2vary = c("cost_pup"))
+testAll <- sens_analysis_perc_mean(sample_size = 1000, perc_sd = 0.2,
+                                   param2vary = c("mass"))
 
 # ***Process SA results***
 # TODO calculate the average and standard error across replicates
@@ -376,15 +376,15 @@ aaaplot <-
   geom_errorbar(aes(ymin = lower.ci, ymax = upper.ci)) +
   geom_point() +
   geom_line()
-# geom_smooth(aes(ymin = lower.ci, ymax = upper.ci))
+
 print(aaaplot)
 
 ## ---- Save Outputs ----
 # TODO need to write in parameter and sd value to file name
 
 # Extract input values from the testAll object
-perc_sd <- 0.05  # As used in the function call
-param2vary <- "cost_pup"  # As used in the function call
+perc_sd <- "lit"  # As used in the function call
+param2vary <- "all"  # As used in the function call
 
 #Designate location to save them in 
 folder_path <- "~/Documents/Thesis/otteR/Results"
