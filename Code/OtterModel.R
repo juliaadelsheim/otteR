@@ -1,161 +1,338 @@
 # Model Otter from Excel into R
 
-#Date Created: March 14, 2023
+#Date Created: Dec 2024
 
 #Author: Julia Adelsheim
-#Collaborators: Izzy Morgante (Nov, Dec 2022, Jan 2023),
-#               Andreas Novotny (12-2-2022),
-#               Patrick Pata (1-19-23- 3-14-23)
+#Collaborators: Andreas Novotny 
 
 #Platform: Mac
-#Purpose of Script: Change ROR by set amounts and see how energy needs change
+#Purpose of Script: 
+
+## Coding Questions-----------------------------------------------------
+
+# To Do ------------------------------------------------------------------
+
+## Start-----------------------------------------------------------------------
+#File Name: Otter Model R v4
+
+rm(list = ls())
+
+setwd("~/Documents/Thesis/otteR")
+# Packages--------------------------------------------------------------
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(data.table)
+
+#Constants--------------------------------------------------------------
+cost_pup <- 3931
+total_min_per_day <- 1440
+
+# Data------------------------------------------------------------------
+# Body masses and tissue growth
+masses <- read.csv(file ='./Data/mass_growth.csv')
+
+# How each unit spend their time
+act_budgets <- read.csv(file = './Data/ActivityBudgets.csv')
+
+# Defining life stages per year and sex
+age_convert <- read.csv(file = './Data/age_lifestage.csv')
 
 # Functions ------------------------------------------------------------
 
+# Converts raw csv files of masses, growth rates, metabolic rates, and costs of behaviors into
+#  a merged dataframe.
 
-#' Bioenergetic Model of Energy Requirements for Sea Otters
-#'
-#' Estimates the daily energy requirements of sea otters based on body mass, metabolic rates, and time allocation across behaviors. 
-#' The model accounts for growth and, optionally, the additional cost of raising a pup.
-#'
-#' @param para_data A data frame containing input data for the model. Must include the following columns:
-#'   \itemize{
-#'     \item \code{Av_mass}: Average body mass (kg).
-#'     \item \code{Metabolic_rate}: Metabolic rate (kJ/kg/min) for each behavior.
-#'     \item \code{Percentage_of_day}: Proportion of the day spent on each behavior (numeric).
-#'     \item \code{Behaviour}: Behavioral states (e.g., "rest", "forage", "activity").
-#'     \item \code{Growth}: Daily growth energy requirement (kJ/day).
-#'     \item \code{With_pup}: Indicates if the sea otter is raising a pup ("yes" or "no").
-#'     \item \code{Sex}: Biological sex ("M" for male, "F" for female).
-#'     \item \code{Age_class}: Age class of the otter (e.g., "adult").
-#'     \item \code{Year_class}: Specific year class (e.g., 2, 3).
-#'   }
-#' @param Cost.pup Numeric. Additional energy cost of raising a pup (kJ/day). Default is \code{3931}.
-#' @param return.all Logical. If \code{TRUE}, returns the full dataset with intermediate calculations.
-#'   If \code{FALSE}, returns a summarized dataset. Default is \code{FALSE}.
-#'
-#' @return A data frame summarizing energy expenditure or the full dataset if \code{return.all = TRUE}.
-#' 
-#' @details 
-#' This function models sea otter energy expenditure by:
-#' \enumerate{
-#'   \item Calculating energy expenditure rates (kJ/min) for each behavior based on body mass and metabolic rate.
-#'   \item Summing daily energy costs of behaviors.
-#'   \item Adding costs for growth and pup care (if applicable).
-#'   \item Computing gross and net rates of return from foraging activities.
-#'   \item Modeling time allocation and energy costs for resting and foraging.
-#' }
-#' 
-#' @examples
-#' \dontrun{
-#' # Example input data
-#' data <- tibble(
-#'   Av_mass = c(30, 25),
-#'   Metabolic_rate = c(0.05, 0.04),
-#'   Percentage_of_day = c(0.5, 0.4),
-#'   Behaviour = c("rest", "forage"),
-#'   Growth = c(500, 400),
-#'   With_pup = c("yes", "no"),
-#'   Sex = c("F", "M"),
-#'   Age_class = c("adult", "adult"),
-#'   Year_class = c(3, 2)
-#' )
-#' 
-#' # Run the model with summarized results
-#' otter_summary <- otteR(data)
-#' 
-#' # Run the model with all intermediate calculations
-#' otter_full <- otteR(data, return.all = TRUE)
-#' }
-#' 
-#' @export
-
-otteR <- function(para_data, Cost.pup = 3931, return.all = FALSE) {
-  
-  # Total number of minutes in a day
-  total_min_per_day <- 1440
-  
-  # Main calculation pipeline
-  output <- para_data %>% 
-    # 1. Calculate energy expenditure rate (kJ/min) for each behavior
-    #    Based on body mass (kg) and metabolic rate (kJ/kg/min)
-    mutate(Behaviour_rate = Av_mass * Metabolic_rate) %>%
-    
-    # 2. Calculate daily time allocation and energy costs for each behavior
-    #    Multiply proportion of day spent on behavior by total minutes per day
-    mutate(Minutes_per_day = Percentage_of_day * total_min_per_day) %>% 
-    mutate(Actual_costs = Behaviour_rate * Minutes_per_day) %>%
-    
-    # 3. Aggregate energy costs for all behaviors per day
-    #    Reshape data to simplify calculations for different behavior categories
-    pivot_wider(names_from = Behaviour, values_from = c(
-      Percentage_of_day, Minutes_per_day, Metabolic_rate, Behaviour_rate, Actual_costs)) %>%
-    mutate(Sum_actual_costs = Actual_costs_rest + Actual_costs_activity + Actual_costs_forage) %>%
-    
-    # 4. Add pup care energy cost if applicable
-    mutate(Pup_cost = ifelse(With_pup == 'yes', Cost.pup, 0)) %>%
-    
-    # 5. Calculate gross rate of return (ROR_gross, kJ/min) from foraging
-    mutate(ROR_gross = (Sum_actual_costs + Pup_cost + Growth) / Minutes_per_day_forage) %>%
-    #    Adjust ROR for adults using predefined year classes
-    mutate(ROR_gross =
-             ifelse(Age_class != "adult",
-                    ROR_gross,
-                    ifelse(Sex == "M",
-                           mean(pull(filter(.data = ., Sex == "M", Year_class == 3),
-                                ROR_gross)),
-                           ifelse(With_pup == "no",
-                                  mean(pull(filter(.data = ., Sex == "F", With_pup == "no", Year_class == 2),
-                                       ROR_gross)),
-                                  mean(pull(filter(.data = ., Sex == "F", With_pup == "yes", Year_class == 2),
-                                       ROR_gross)))))) %>%
-    
-    # 6. Calculate net rate of return (ROR_net, kJ/min)
-    #    Subtract resting metabolism from gross ROR
-    mutate(ROR_net = ROR_gross - (Behaviour_rate_forage - Behaviour_rate_rest)) %>%
-    
-    # 7. Calculate resting costs during non-foraging periods
-    mutate(Resting_cost_wout_foraging = Behaviour_rate_rest * (Minutes_per_day_rest + Minutes_per_day_forage)) %>%
-    
-    # 8. Model daily time allocation and energy costs for foraging
-    mutate(Minutes_per_day_forage_modeled =
-             (Actual_costs_activity + Resting_cost_wout_foraging + Pup_cost + Growth) / ROR_net) %>%
-    mutate(Percentage_of_day_forage_modeled =
-             Minutes_per_day_forage_modeled / total_min_per_day) %>%
-    mutate(Actual_costs_forage_modeled =
-             Minutes_per_day_forage_modeled * Behaviour_rate_forage) %>%
-    
-    # 9. Model daily time allocation and energy costs for resting
-    mutate(Percentage_of_day_rest_modeled =
-             1 - (Percentage_of_day_forage_modeled + Percentage_of_day_activity)) %>%
-    mutate(Minutes_per_day_rest_modeled =
-             total_min_per_day * Percentage_of_day_rest_modeled) %>%
-    mutate(Actual_costs_rest_modeled =
-             Minutes_per_day_rest_modeled * Behaviour_rate_rest) %>%
-    
-    # 10. Calculate total energy expenditure (modeled vs. original)
-    mutate(Total_energy_expenditure_modeled =
-             Actual_costs_rest_modeled + Actual_costs_forage_modeled +
-             Actual_costs_activity + Growth + Pup_cost) %>%
-    mutate(Total_energy_expenditure_original =
-             Actual_costs_rest + Actual_costs_forage + Actual_costs_activity + Growth + Pup_cost) %>%
-    arrange(Sex, With_pup, Year_class)
-  
-  # Prepare a cleaned summary output
-  clean_output <- output %>% 
-    select(Sex, With_pup, Age_class, Year_class, Pup_cost, Growth,
-           Percentage_of_day_activity, Minutes_per_day_activity, Actual_costs_activity,
-           Percentage_of_day_forage_modeled, Minutes_per_day_forage_modeled, Actual_costs_forage_modeled,
-           Percentage_of_day_rest_modeled, Minutes_per_day_rest_modeled, Actual_costs_rest_modeled,
-           Total_energy_expenditure_modeled)
-  
-  # Return either full output or summary, based on user preference
-  if (return.all == TRUE) {
-    return(output)
-  } else {
-    return(clean_output)
-  }
+merge_data <- function(masses, act_budgets, age_convert) {
+  # Join data frames to create a table with MASS, GROWTH, and METABOLIC RATES per behavior
+  mass_lifestage <- merge(masses, age_convert, by.x = c('Age', 'Sex')) #, all.x = TRUE) # would make blank rows
+  mass_lifestage_budget <- merge(mass_lifestage, act_budgets, by.x = c('Sex', 'Lifestage'))  %>% 
+<<<<<<< Updated upstream
+    # Calculate mass specific metabolic rates: first step
+=======
+    #Calculate minutes per day from % of day
+    mutate(min_per_day = perc_time * total_min_per_day) %>% 
+    # Calculate metabolic rates
+>>>>>>> Stashed changes
+    mutate(metabolic_rates = Av_mass * MR) %>% 
+    # Calculate actual (additional) metabolic costs
+    mutate(actual_costs = metabolic_rates * min_per_day)
+  return(mass_lifestage_budget)
+<<<<<<< Updated upstream
 }
+
+
+# Re-sort data into a wider pivot table to columns specific to behavior: 
+make_wide_data <- function(mass_lifestage_budget) {
+  mass_lifestage_budget_wide <- mass_lifestage_budget %>%
+    # Make dataframe in a wide format
+    pivot_wider(names_from = Behaviour, values_from=c(perc_time, min_per_day, MR, metabolic_rates, actual_costs)) %>% 
+    mutate(resting_cost_wout_foraging = metabolic_rates_rest * (min_per_day_rest + min_per_day_forage)) %>% 
+    # Calculate sum of actual costs
+    mutate(sum_actual_costs = actual_costs_rest + actual_costs_activity + actual_costs_forage) %>% 
+    # Modify pup costs
+    mutate(pup_cost = ifelse(with.pup == 'yes', cost_pup, 0)) %>% 
+    # Calculate Original ROR
+    mutate(ROR = (sum_actual_costs + pup_cost + Growth)/(min_per_day_forage)) %>%
+    # Make ROR repeat for adults
+    mutate(ROR = ifelse(Lifestage != "adult", ROR,
+                        ifelse(Sex == "M", pull(filter(.data = ., Sex == "M", Age == 3), ROR),
+                               ifelse(with.pup == "no", pull(filter(.data = ., Sex == "F", with.pup=="no", Age == 2), ROR),
+                                      pull(filter(.data = ., Sex == "F", with.pup=="yes", Age == 2), ROR)
+                               ))))
+}
+
+# Make an ROR function so that I don't have to repeat the code every time I change conditions
+# Data is the wide_data table with behavior specific values, returns a dataframe that calculated
+#  from profits, time_needed_to_forage, and new_perc_time_forage
+calculate_foraging_time <- function(mass_lifestage_budget_wide) {
+  
+  mass_lifestage_budget_wide <- mass_lifestage_budget_wide %>% 
+    
+    # Calculate Profits
+    mutate(profits = ROR - (metabolic_rates_forage - metabolic_rates_rest)) %>% 
+    
+    # Calculate foraging time needed
+    mutate(time_needed_to_forage = (resting_cost_wout_foraging + actual_costs_activity + Growth + pup_cost)/ profits) %>% 
+    
+    #Calc % of day foraging
+    mutate(new_perc_time_forage = time_needed_to_forage/total_min_per_day) %>% 
+    
+    select(Sex, Age, Lifestage, with.pup, ROR, profits, time_needed_to_forage, new_perc_time_forage)
+  
+  }
+
+
+# This function builds parts of the model. Takes in a wide dataframe of activity specific rates and costs.
+#  Returns new costs of foraging.
+build_model <- function(budget_data, ROR){  
+  
+  # Put in columns that are not going to change with ROR
+  model_pt1 <- budget_data %>%
+    select(c(Sex, Age, Lifestage, with.pup, Growth, pup_cost, perc_time_activity, min_per_day_activity, actual_costs_activity, metabolic_rates_forage, metabolic_rates_rest)) 
+  
+  # Attach ROR table that you want to use
+  model_setup <- merge(model_pt1, ROR, by = c('Sex', 'Age', 'Lifestage', 'with.pup')) %>% 
+    # Add new foraging % of day and minutes per day values
+    select(c(Sex, Age, Lifestage, with.pup, pup_cost, Growth, perc_time_activity, min_per_day_activity, actual_costs_activity, new_perc_time_forage, metabolic_rates_forage, time_needed_to_forage, metabolic_rates_rest)) %>%
+    arrange(Age, Sex)
+  
+  # set up the model table- start calculating new values for foraging
+  # model_setup <- merge(model_setup, foraging_met_rate)
+  
+  #calculate new cost of foraging
+  model_setup <- model_setup %>% 
+    mutate(foraging_cost = metabolic_rates_forage * time_needed_to_forage) %>% 
+    
+    # Calculate % resting
+    mutate(new_perc_time_rest = (1- (perc_time_activity + new_perc_time_forage))) %>% 
+    
+    # Calculate min per day resting
+    mutate(new_min_per_day_rest= (total_min_per_day - (min_per_day_activity + time_needed_to_forage))) %>% 
+    
+    # Calculate resting cost
+    mutate(new_resting_cost= new_min_per_day_rest * metabolic_rates_rest)
+  
+  return(model_setup)
+}
+
+run_model <- function(mod_setup){
+  mod_setup <- mod_setup %>% 
+    
+    #Calculate total energy requirements
+    mutate(total_energy = pup_cost + Growth + actual_costs_activity + foraging_cost + new_resting_cost)
+  
+  return(mod_setup)
+}
+
+
+=======
+}
+
+# Re-sort data into a wider pivot table to columns specific to behavior: 
+make_wide_data <- function(mass_lifestage_budget) {
+  mass_lifestage_budget_wide <- mass_lifestage_budget %>%
+    # Make dataframe in a wide format
+    pivot_wider(names_from = Behaviour, values_from=c(perc_time, min_per_day, MR, metabolic_rates, actual_costs)) %>% 
+    mutate(resting_cost_wout_foraging = metabolic_rates_rest * (min_per_day_rest + min_per_day_forage)) %>% 
+    # Calculate sum of actual costs
+    mutate(sum_actual_costs = actual_costs_rest + actual_costs_activity + actual_costs_forage) %>% 
+    # Modify pup costs
+    mutate(pup_cost = ifelse(with.pup == 'yes', cost_pup, 0)) %>% 
+    # Calculate Original ROR
+    mutate(ROR = (sum_actual_costs + pup_cost + Growth)/(min_per_day_forage)) %>%
+    # Make ROR repeat for adults
+    mutate(ROR = ifelse(Lifestage != "adult", ROR,
+                        ifelse(Sex == "M", pull(filter(.data = ., Sex == "M", Age == 3), ROR),
+                               ifelse(with.pup == "no", pull(filter(.data = ., Sex == "F", with.pup=="no", Age == 2), ROR),
+                                      pull(filter(.data = ., Sex == "F", with.pup=="yes", Age == 2), ROR)
+                               ))))
+}
+
+# Make an ROR function so that I don't have to repeat the code every time I change conditions
+# Data is the wide_data table with behavior specific values, returns a dataframe that calculated
+#  from profits, time_needed_to_forage, and new_perc_time_forage
+calculate_foraging_time <- function(mass_lifestage_budget_wide) {
+  
+  mass_lifestage_budget_wide <- mass_lifestage_budget_wide %>% 
+    
+    # Calculate Profits
+    mutate(profits = ROR - (metabolic_rates_forage - metabolic_rates_rest)) %>% 
+    
+    # Calculate foraging time needed
+    mutate(time_needed_to_forage = (resting_cost_wout_foraging + actual_costs_activity + Growth + pup_cost)/ profits) %>% 
+    
+    #Calc % of day foraging
+    mutate(new_perc_time_forage = time_needed_to_forage/total_min_per_day) %>% 
+    
+    select(Sex, Age, Lifestage, with.pup, ROR, profits, time_needed_to_forage, new_perc_time_forage)
+  
+  }
+
+
+# This function builds parts of the model. Takes in a wide dataframe of activity specific rates and costs.
+#  Returns new costs of foraging.
+build_model <- function(budget_data, ROR){  
+  
+  # Put in columns that are not going to change with ROR
+  model_pt1 <- budget_data %>%
+    select(c(Sex, Age, Lifestage, with.pup, Growth, pup_cost, perc_time_activity, min_per_day_activity, actual_costs_activity, metabolic_rates_forage, metabolic_rates_rest)) 
+  
+  # Attach ROR table that you want to use
+  model_setup <- merge(model_pt1, ROR, by = c('Sex', 'Age', 'Lifestage', 'with.pup')) %>% 
+    # Add new foraging % of day and minutes per day values
+    select(c(Sex, Age, Lifestage, with.pup, pup_cost, Growth, perc_time_activity, min_per_day_activity, actual_costs_activity, new_perc_time_forage, metabolic_rates_forage, time_needed_to_forage, metabolic_rates_rest)) %>%
+    arrange(Age, Sex)
+  
+  # set up the model table- start calculating new values for foraging
+  # model_setup <- merge(model_setup, foraging_met_rate)
+  
+  #calculate new cost of foraging
+  model_setup <- model_setup %>% 
+    mutate(foraging_cost = metabolic_rates_forage * time_needed_to_forage) %>% 
+    
+    # Calculate % resting
+    mutate(new_perc_time_rest = (1- (perc_time_activity + new_perc_time_forage))) %>% 
+    
+    # Calculate min per day resting
+    mutate(new_min_per_day_rest= (total_min_per_day - (min_per_day_activity + time_needed_to_forage))) %>% 
+    
+    # Calculate resting cost
+    mutate(new_resting_cost= new_min_per_day_rest * metabolic_rates_rest)
+  
+  return(model_setup)
+}
+
+run_model <- function(mod_setup){
+  mod_setup <- mod_setup %>% 
+    
+    #Calculate total energy requirements
+    mutate(total_energy = pup_cost + Growth + actual_costs_activity + foraging_cost + new_resting_cost)
+  
+  return(mod_setup)
+}
+
+
+>>>>>>> Stashed changes
+# Runs through the entire otter bioenergetics model. 
+#   Receives the raw data frame of model variables.
+#   Returns a dataframe of the calculated total energy expenditure.
+
+otter_model <- function(masses, act_budgets, age_convert) {
+  mass_lifestage_budget <- merge_data(masses = masses,
+                                      act_budgets = act_budgets,
+                                      age_convert = age_convert)
+  wide_data <- make_wide_data(mass_lifestage_budget)
+  
+  # Changing conditions of ROR
+  ROR_og <- calculate_foraging_time(wide_data) # Original ROR
+  
+  # Build the model using the calculated wide df and the ROR
+  model_setup <- build_model(budget_data = wide_data, ROR = ROR_og)
+  
+  # Run the model to get total_energy
+  model_results <- run_model(mod_setup = model_setup) %>% 
+    relocate(total_energy)
+  
+  return(model_results)
+}
+
+# Build Model---------------------------------------------------------------------------------
+
+
+model_run_og <- otter_model(masses = masses,
+                            act_budgets = act_budgets,
+                            age_convert = age_convert)
+
+#---- Graphs ----
+
+# Plain ol line graph 
+model_run_og %>% 
+  mutate(Group = paste(Sex, with.pup)) %>% 
+  ggplot() +
+  geom_line(aes(Age, total_energy, color = Group))
+
+
+#---- Activity Budget Graphs---- 
+
+# Pups/Juveniles/Subadults
+
+actbudget_young <- model_run_og %>% 
+  filter(Lifestage != "adult") %>% 
+  select(Sex, Age, Lifestage, with.pup, perc_time_activity, new_perc_time_forage, new_perc_time_rest) %>% 
+  pivot_longer(cols=c(perc_time_activity, new_perc_time_forage, new_perc_time_rest),
+               names_to='Behaviour',
+               values_to='PercentTime') %>% 
+  mutate(Behaviour = recode(Behaviour, perc_time_activity = 'Activity', 
+                            new_perc_time_forage = 'Foraging', new_perc_time_rest = 'Resting')) 
+ 
+#---- Stacked Bar Graph----
+library(data.table)
+actbudget_young <- data.table(actbudget_young)
+actbudget_young <- actbudget_young[,  mean(PercentTime), by=.(Behaviour, Lifestage)] 
+       
+actbudget_young$Lifestage <- factor(actbudget_young$Lifestage)
+
+actbudget_young$Lifestage <- ordered(actbudget_young$Lifestage, levels = c("pup", "juvenile", "subadult"))
+
+(actbudget_young_stackedplot <- ggplot(actbudget_young,
+  aes(x = Lifestage, y = V1, fill=Behaviour)) +
+  geom_bar(stat='identity') +
+  theme_classic() +
+  ylab("Percent of Day")+
+  scale_x_discrete(labels = c("Pup", "Juvenile", "SubAdult"))
+ )
+actbudget_young <- ggsave("Actbudget_young_stacked.jpeg", width = 4, height = 2.6)
+  
+#---- Grouped Bar Graph----
+
+#Data
+actbudget_young <- model_run_og %>% 
+  filter(Lifestage != "adult") %>% 
+  select(Sex, Age, Lifestage, with.pup, perc_time_activity, new_perc_time_forage, new_perc_time_rest) %>% 
+  pivot_longer(cols=c(perc_time_activity, new_perc_time_forage, new_perc_time_rest),
+               names_to='Behaviour',
+               values_to='PercentTime') %>% 
+  mutate(Behaviour = recode(Behaviour, perc_time_activity = 'Activity', 
+                            new_perc_time_forage = 'Foraging', new_perc_time_rest = 'Resting')) 
+
+actbudget_young$Lifestage <- factor(actbudget_young$Lifestage)
+
+actbudget_young$Lifestage <- ordered(actbudget_young$Lifestage, levels = c("pup", "juvenile", "subadult"))
+#Graph
+
+(actbudget_young_bars <- ggplot(actbudget_young,
+  aes(x = Behaviour, y = PercentTime, fill=Behaviour)) +
+  geom_bar(position = "dodge", stat= "identity", show.legend = "FALSE") +
+  facet_grid(.~Lifestage) +
+  theme_classic() +
+  ylab("Percent of Day") 
+)
+
+
+actbudget_young_bars <- ggsave("Actbudget_young.jpeg", width = 4, height = 2.6)
+
+
 
 
 

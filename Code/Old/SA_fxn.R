@@ -1,20 +1,9 @@
 #Sensitivity Analysis for Growth
 
-#Date Created: Feb 13, 2023
+#Date Created: 
 
 #Author: Julia Adelsheim
-#Collaborators: Patrick Pata, Izzy Morgante, Andreas Novotny
-
-#Platform: Mac
-#Purpose of Script: Code a sensitivity analysis my otter model
-
-## Coding Questions-----------------------------------------------------
-
-# Heat increment of feeding in otters, digestive losses- are they included?
-
-# To Do------------------------------------------------------------------
-
-# Remove +1 original, run models and bind the original one after
+#Collaborators: Patrick Pata, Andreas Novotny, Izzy Morgante
 
 ##Start-----------------------------------------------------------------------
 
@@ -28,29 +17,81 @@ library(tidyverse)
 library(ggplot2)
 
 #Constants--------------------------------------------------------------
-cost_pup <- 3931
+cost_pup <- 3931 # TODO to change
 total_min_per_day <- 1440
 
+# Data------------------------------------------------------------------
+masses <- read.csv(file ='mass_growth.csv') 
+  # filter(!is.na(Age)) # remove empty rows
+
+act_budgets <- read.csv(file = 'ActivityBudgets.csv') 
+  # filter(!is.na(MR)) # remove empty rows
+
+age_convert <- read.csv(file = 'age_lifestage.csv')
+
+# TODO change values for standard deviation later
+stdev_MR_perc_time <- read.csv(file= 'Stdev_MR_perc_time.csv') %>%
+  filter(!is.na(stdev_perc_time)) %>%
+  filter(!is.na(stdev_MR))
+
 # Functions ------------------------------------------------------------
+
+# Converts raw csv files of masses, growth rates, metabolic rates, and costs of behaviors into
+#  a merged dataframe.
+merge_data <- function(masses, act_budgets, age_convert) {
+  # Join data frames to create a table with MASS, GROWTH, and METABOLIC RATES per behavior
+  mass_lifestage <- merge(masses, age_convert, by.x = c('Age', 'Sex')) #, all.x = TRUE) # would make blank rows
+  mass_lifestage_budget <- merge(mass_lifestage, act_budgets, by.x = c('Sex', 'Lifestage'))  %>% 
+    #Calculate minutes per day from % of day
+    mutate(min_per_day = perc_time * total_min_per_day) %>% 
+    # Calculate metabolic rates
+    mutate(metabolic_rates = Av_mass * MR) %>% 
+    # Calculate actual (additional) metabolic costs
+    mutate(actual_costs = metabolic_rates * min_per_day)
+  return(mass_lifestage_budget)
+}
+
+# Re-sort data into a wider pivot table to columns specific to behavior: 
+#   MR_*, metabolic_rates_*, min_per_day_*, perc_time_*, actual_costs_*
+make_wide_data <- function(mass_lifestage_budget, cost_pup) {
+  mass_lifestage_budget_wide <- mass_lifestage_budget %>%
+    # Make dataframe in a wide format
+    pivot_wider(names_from = Behaviour, values_from=c(perc_time, min_per_day, MR, metabolic_rates, actual_costs)) %>% 
+    mutate(resting_cost_wout_foraging = metabolic_rates_rest * (min_per_day_rest + min_per_day_forage)) %>% 
+    # Calculate sum of actual costs
+    mutate(sum_actual_costs = actual_costs_rest + actual_costs_activity + actual_costs_forage) %>% 
+    # Modify pup costs
+    mutate(pup_cost = ifelse(with.pup == 'yes', cost_pup, 0)) %>% 
+    # Calculate ROR
+    mutate(ROR = (sum_actual_costs + pup_cost + Growth)/(min_per_day_forage)) %>%
+    # Make ROR repeat for adults
+    mutate(ROR = ifelse(Lifestage != "adult", ROR,
+                        ifelse(Sex == "M", pull(filter(.data = ., Sex == "M", Age == 3), ROR),
+                               ifelse(with.pup == "no", pull(filter(.data = ., Sex == "F", with.pup=="no", Age == 2), ROR),
+                                      pull(filter(.data = ., Sex == "F", with.pup=="yes", Age == 2), ROR)
+                               ))))
+}
+
+
 # Make an ROR function so that I don't have to repeat the code every time I change conditions
 # Data is the wide_data table with behavior specific values, returns a dataframe that calculated
 #  from profits, time_needed_to_forage, and new_perc_time_forage
-calculate_foraging_time <- function(data) {
+calculate_foraging_time <- function(mass_lifestage_budget_wide) {
   
-  output <- data %>% 
+  mass_lifestage_budget_wide <- mass_lifestage_budget_wide %>% 
     
     # Calculate Profits
     mutate(profits = ROR - (metabolic_rates_forage - metabolic_rates_rest)) %>% 
     
     # Calculate foraging time needed
-    mutate(time_needed_to_forage = (actual_costs_activity + resting_cost_wout_foraging)/ profits) %>% 
+    mutate(time_needed_to_forage = (resting_cost_wout_foraging + actual_costs_activity + Growth + pup_cost)/ profits) %>% 
     
     #Calc % of day foraging
     mutate(new_perc_time_forage = time_needed_to_forage/total_min_per_day) %>% 
     
     select(Sex, Age, Lifestage, with.pup, ROR, profits, time_needed_to_forage, new_perc_time_forage)
+  
 }
-
 
 # This function builds parts of the model. Takes in a wide dataframe of activity specific rates and costs.
 #  Returns new costs of foraging.
@@ -87,6 +128,7 @@ build_model <- function(budget_data, ROR){
   return(model_setup)
 }
 
+
 run_model <- function(mod_setup){
   mod_setup <- mod_setup %>% 
     
@@ -96,52 +138,15 @@ run_model <- function(mod_setup){
   return(mod_setup)
 }
 
-# Converts raw csv files of masses, growth rates, metabolic rates, and costs of behaviors into
-#  a merged dataframe.
-merge_data <- function(masses, act_budgets, age_convert) {
-  # Join data frames to create a table with MASS, GROWTH, and METABOLIC RATES per behavior
-  mass_lifestage <- merge(masses, age_convert, by.x = c('Age', 'Sex')) #, all.x = TRUE) # would make blank rows
-  mass_lifestage_budget <- merge(mass_lifestage, act_budgets, by.x = c('Sex', 'Lifestage'))  %>% 
-    # Calculate metabolic rates
-    mutate(metabolic_rates = Av_mass * MR) %>% 
-    # Calculate actual (additional) metabolic costs
-    mutate(actual_costs = metabolic_rates * min_per_day)
-  return(mass_lifestage_budget)
-}
-
-# Re-sort data into a wider pivot table to columns specific to behavior: 
-#   MR_*, metabolic_rates_*, min_per_day_*, perc_time_*, actual_costs_*
- make_wide_data <- function(mass_lifestage_budget) {
-  mass_lifestage_budget_wide <- mass_lifestage_budget %>%
-    # Make dataframe in a wide format
-    pivot_wider(names_from = Behaviour, values_from=c(perc_time, min_per_day, MR, metabolic_rates, actual_costs)) %>% 
-    mutate(resting_cost_wout_foraging = metabolic_rates_rest * (min_per_day_rest + min_per_day_forage)) %>% 
-    # Calculate sum of actual costs
-    mutate(sum_actual_costs = actual_costs_rest + actual_costs_activity + actual_costs_forage) %>% 
-    # Modify pup costs
-    mutate(pup_cost = ifelse(with.pup == 'yes', cost_pup, 0)) %>% 
-    # Calculate ROR
-    mutate(ROR = (sum_actual_costs + pup_cost + Growth)/(min_per_day_forage)) %>%
-    # Make ROR repeat for adults
-    mutate(ROR = ifelse(Lifestage != "adult", ROR,
-                        ifelse(Sex == "M", pull(filter(.data = ., Sex == "M", Age == 3), ROR),
-                               ifelse(with.pup == "no", pull(filter(.data = ., Sex == "F", with.pup=="no", Age == 2), ROR),
-                                      pull(filter(.data = ., Sex == "F", with.pup=="yes", Age == 2), ROR)
-                               ))))
-}
-
-# Runs through the entire otter bioenergetics model. 
+# Runs through the entire model. 
 #   Receives the raw data frame of model variables.
-#   Returns a dataframe of the calculated total energy expenditure.
-mass_lifestage_budget <- merge_data(masses = masses,
-                                    act_budgets = act_budgets,
-                                    age_convert = age_convert)
 
- otter_model <- function(masses, act_budgets, age_convert) {
+#   Returns a dataframe of the calculated total energy expenditure.
+ otter_model <- function(masses, act_budgets, age_convert, cost_pup) {
   mass_lifestage_budget <- merge_data(masses = masses,
                                       act_budgets = act_budgets,
                                       age_convert = age_convert)
-  wide_data <- make_wide_data(mass_lifestage_budget)
+  wide_data <- make_wide_data(mass_lifestage_budget, cost_pup)
   
   # Changing conditions of ROR
   ROR_og <- calculate_foraging_time(wide_data) # Original ROR
@@ -156,130 +161,92 @@ mass_lifestage_budget <- merge_data(masses = masses,
   return(model_results)
 }
 
-## Sensitivity Analysis Functions--------------------
-
-# Change_var is the column you want to change, df is the data frame that holds that column (either wide_data or ROR_og)
-
-make_change_var_df <- function(change_var, df){ 
-  change_df <- df %>% select(Age, Sex, Lifestage, with.pup, Change_var = all_of(change_var))
-  
-  return(change_df)
-}
-
-# Set up dataframe to store all the random values (rep = 1 will be original data)
-make_random_samples <- function(sample_size, sd_change = 0.1, change_df){
-  
-  change_all_reps <- change_df
-  change_all_reps$rep <- 1 
-  
-  #  Adds the random values to data frame based on normal distribution 
-  for (i in 1:dim(change_df)[1]){
-    # Randomly sample from normal distribution 
-    changed_vals <- data.frame(Change_var = rnorm(sample_size, 
-                                                  mean = change_df$Change_var[i], 
-                                                  sd = change_df$Change_var[i]*sd_change))
-    changed_vals$rep <- 2:(sample_size+1)
-    changed_vals$Age <- change_df$Age[i]
-    changed_vals$Sex <- change_df$Sex[i]
-    changed_vals$Lifestage <- change_df$Lifestage[i]
-    changed_vals$with.pup <- change_df$with.pup[i]
-    
-    change_all_reps <- rbind(change_all_reps, changed_vals)
-  }
-  
-  return(change_all_reps)
-}
-
-# Replace the old column for the new values based on current replicate
-
-run_model_with_reps <- function(change_all_reps, df, sample_size, change_var){
-  
-  final_data <- data.frame()
-  
-  for (i in 1:(sample_size+1)){
-    
-    new_df <- df %>% 
-      select(-all_of(change_var)) %>% 
-      merge((change_all_reps %>% 
-               filter(rep == i) %>% 
-               select(-rep))) %>% 
-      rename(!!change_var := Change_var)
-    
-    # Run model for given values
-    model_setup <- build_model(budget_data = new_df, ROR = ROR_og)
-    output <- run_model(model_setup)
-    output$rep <- i
-    
-    final_data <- rbind(final_data, output)
-  }
-  
-  return(final_data)
-}
-
-# Data------------------------------------------------------------------
-masses <- read.csv(file ='mass_growth.csv') %>% 
-  filter(!is.na(Age)) # remove empty rows
-
-act_budgets <- read.csv(file = 'ActivityBudgets.csv') %>% 
-  filter(!is.na(MR)) # remove empty rows
-
-age_convert <- read.csv(file = 'age_lifestage.csv')
-
-stdev_MR_perc_time <- read.csv(file= 'Stdev_MR_perc_time.csv') %>%
-  filter(!is.na(stdev_perc_time)) %>%
-  filter(!is.na(stdev_MR))
 
 # Model----------------------------------------------------------
+# This is the defaul model run with literature mean values for the parameters.
 model.run.1 <- otter_model(masses = masses,
                            act_budgets = act_budgets,
-                           age_convert = age_convert)
+                           age_convert = age_convert,
+                           cost_pup = 3931)
 
 # Sensitivity Analysis of Model Parameters---------------------------------------
 
 # Variables that can change
-#  1. pupcost - a constant variable
-#  2. growth - in masses dataframe
-#  3. mass - in masses dataframe
-#  4. foraging and resting - in act_budgets dataframe
-#  5. metabolic rate? - in act_budgets dataframe
-
-# Add stdev to model
-# stdev_MR_perc_time <- read.csv(file= 'Stdev_MR_perc_time.csv') %>%
-#   filter(!is.na(stdev_perc_time)) %>%
-#   filter(!is.na(stdev_MR)) #%>%
-#pivot_wider(names_from = Behaviour, values_from=c(stdev_perc_time, stdev_MR))
-
-#SA_MR_with_stdev <-  merge(model.run.1, stdev_MR_perc_time, by.x = c('Sex', 'Lifestage', 'with.pup'))
+#  1. growth - in masses dataframe
+#  2. mass - in masses dataframe
+#  3. foraging and resting - in act_budgets dataframe
+#  4. metabolic rate? - in act_budgets dataframe
 
 # ** Setup SA -> Select which variable to run **
-set.seed(222)
+set.seed(22222)
+
+# PP Notes Dec 16
+# 1. For each iteration, randomly generate values for the variables in the sensitivity analysis
+# 2. Run the model for these values 
+# 3. Then store the outputs to a data frame that marks the run number
+# 4. Do 2 versions of SA: 1-all parameters vary at the same time; 2-each parameter varies independently
+# 5. For each parameter, do 4 versions of the stdev (5%, 10%, 20%, and literature value)
 
 
-## Change all variables to literature variation ##
-
-sens_analysis_all <- function(sample_size) {
-
+# V1 and V3. SA change values based on literature by changing values one at a time
+# PP: note that here, the stdev values merged to the averages might be changed later
+#     Also note that in randomly sampling the percent time, the total of the 
+#     activities can be not equal to 1. 
+#     ! critical, percent time can be negative after doing the stdev
+sens_analysis_lit <- function(sample_size, 
+                              param2vary) {
+  
   model_all_reps <- data.frame()
   for (rep_num in c(1:sample_size)) {
     
-    masses_rep <- masses %>%
-      group_by(Age, Sex) %>%
-      mutate(Growth = rnorm(1, Growth, sd = stdev_growth)) %>%
-      mutate(Av_mass = rnorm(1, Av_mass, sd = stdev_mass)) %>%
-      ungroup()
+    # When a parameter is not being varied, use default values
+    masses_rep <- masses 
+    act_budgets_rep <- act_budgets %>% 
+      left_join(stdev_MR_perc_time, by = c('Sex', 'Lifestage', 'with.pup', "Behaviour"))
     
-    act_budgets_rep <- act_budgets %>%
-      group_by(Sex, Lifestage, with.pup, Behaviour) %>%
-      merge(stdev_MR_perc_time, by = c('Sex', 'Lifestage', 'with.pup', "Behaviour")) %>%
-      group_by(Sex, Lifestage, with.pup, Behaviour, MR, stdev_MR) %>%
-      mutate(MR =  rnorm(1, mean = MR, sd = stdev_MR),
-             perc_time =  rnorm(1, mean = perc_time, sd = stdev_perc_time)) %>% 
+    if ("growth" %in% param2vary){
+      masses_rep <- masses_rep %>%  
+        group_by(Age, Sex) %>%
+        mutate(Growth = rnorm(1, Growth, sd = stdev_growth)) %>%
+        ungroup()
+    }
+    
+    if ("mass" %in% param2vary){
+      masses_rep <- masses_rep %>%  
+        group_by(Age, Sex) %>%
+        mutate(Av_mass = rnorm(1, Av_mass, sd = stdev_mass)) %>%
+        ungroup()
+    }
+    
+    if ("MR" %in% param2vary){
+      act_budgets_rep <- act_budgets_rep %>%
+        group_by(Sex, Lifestage, with.pup, Behaviour) %>%
+        mutate(MR =  rnorm(1, mean = MR, sd = stdev_MR)) %>% 
+        ungroup() 
+    }
+    
+    if("perc_time" %in% param2vary){
+      act_budgets_rep <- act_budgets_rep %>%
+        group_by(Sex, Lifestage, with.pup, Behaviour) %>%
+        mutate(perc_time =  rnorm(1, mean = perc_time, sd = stdev_perc_time)) %>% 
+        ungroup() 
+    }
+    
+    
+    # Make sure percent time totals to 1 and remove unncessary columns
+    act_budgets_rep <- act_budgets_rep %>%
+      group_by(Sex, Lifestage, with.pup) %>%
+      mutate(total_perc_time = sum(perc_time)) %>%
       ungroup() %>% 
+      mutate(perc_time = perc_time / total_perc_time) %>% 
       dplyr::select(all_of(colnames(act_budgets)))
     
+
+    # This runs the model with the randomly varied parameters
     model_rep <- otter_model(masses = masses_rep,
                              act_budgets = act_budgets_rep,
-                             age_convert = age_convert) %>%
+                             age_convert = age_convert,
+                             cost_pup = 3931) %>%
       mutate(rep_num = rep_num) %>%
       relocate(rep_num)
     
@@ -289,111 +256,166 @@ sens_analysis_all <- function(sample_size) {
   return(model_all_reps)
 }
 
-testAll <- sens_analysis_all(sample_size = 1000)
 
-
-       ## Change one var at a time 
-
-sensitivity_analysis <- function(change_var, var, sample_size) {
+# V2 and V4. SA by changing % of the mean for each parameter at a time or all together
+# The value for perc_sd are fractions (0.05, 0.1, 0.20)
+# values for param2vary are: c(growth, mass, MR, perc_time). 
+#   If varying all, include all there values in the array.
+sens_analysis_perc_mean <- function(sample_size, perc_sd,
+                                           param2vary) {
   
-  testAll <- data.frame()
+  model_all_reps <- data.frame()
   for (rep_num in c(1:sample_size)) {
     
-    # Uncomment if changing the act_budgets df
-    act_budgets_rep <- act_budgets %>%
-      group_by(Sex, Lifestage, with.pup, Behaviour) %>%
-      merge(stdev_MR_perc_time, by = c('Sex', 'Lifestage', 'with.pup', "Behaviour")) %>%
-      # group_by(Sex, Lifestage, with.pup, Behaviour, MR) %>% 
-      mutate(MR = rnorm(1, MR, sd = 0.1)) %>% 
-      #mutate(MR = rnorm(1, MR, sd = 0.2)) %>% 
-      #mutate(MR = rnorm(1, MR, sd = 0.05)) %>% 
-      
-      #Use stdev from literature
-      # group_by(Sex, Lifestage, with.pup, Behaviour, MR, stdev_MR) %>%
-      # mutate("{{change_var}}" =  rnorm(1, mean = {{change_var}}, sd = var),
-      #        Growth )  %>% 
-      # ungroup() %>% 
-      # dplyr::select(all_of(colnames(act_budgets)))
+    # When a parameter is not being varied, use default values
+    masses_rep <- masses 
+    act_budgets_rep <- act_budgets %>% 
+      left_join(stdev_MR_perc_time, by = c('Sex', 'Lifestage', 'with.pup', "Behaviour"))
     
-    model_rep <- otter_model(masses = masses,
+    if ("growth" %in% param2vary){
+      masses_rep <- masses_rep %>%  
+        group_by(Age, Sex) %>%
+        mutate(Growth = rnorm(1, Growth, sd = Growth*perc_sd)) %>%
+        ungroup()
+    }
+    
+    if ("mass" %in% param2vary){
+      masses_rep <- masses_rep %>%  
+        group_by(Age, Sex) %>%
+        mutate(Av_mass = rnorm(1, Av_mass, sd = Av_mass*perc_sd)) %>%
+        ungroup()
+    }
+    
+    if ("MR" %in% param2vary){
+      act_budgets_rep <- act_budgets_rep %>%
+        group_by(Sex, Lifestage, with.pup, Behaviour) %>%
+        mutate(MR =  rnorm(1, mean = MR, sd = MR*perc_sd)) %>% 
+        ungroup() 
+    }
+    
+    if("perc_time" %in% param2vary){
+      act_budgets_rep <- act_budgets_rep %>%
+        group_by(Sex, Lifestage, with.pup, Behaviour) %>%
+        mutate(perc_time =  rnorm(1, mean = perc_time, sd = perc_time*perc_sd)) %>% 
+        ungroup() 
+    }
+    
+    if("cost_pup" %in% param2vary) {
+      cost_pup <- rnorm(1, mean = 3931, sd = 3931*perc_sd)
+    } else {
+      cost_pup <- 3931
+    }
+   
+    # Make sure percent time totals to 1 and remove unnecessary columns
+    act_budgets_rep <- act_budgets_rep %>%
+      group_by(Sex, Lifestage, with.pup) %>%
+      mutate(total_perc_time = sum(perc_time)) %>%
+      ungroup() %>% 
+      mutate(perc_time = perc_time / total_perc_time) %>% 
+      dplyr::select(all_of(colnames(act_budgets)))
+    
+    # This runs the model with the randomly varied parameters
+    model_rep <- otter_model(masses = masses_rep,
                              act_budgets = act_budgets_rep,
-                             age_convert = age_convert) %>%
+                             age_convert = age_convert,
+                             cost_pup = cost_pup) %>%
       mutate(rep_num = rep_num) %>%
       relocate(rep_num)
     
     model_all_reps <- bind_rows(model_all_reps, model_rep)
-    return(model_all_reps)
+    
   }
+  return(model_all_reps)
 }
 
-# model_all_rep_MR_0.05 <- sens_analysis(change_var = MR, var = 0.05, sample_size = 10)
+# Run SA ---------------
 
-write.csv(model_all_reps, paste0("model_all_reps_", change_var, "_", var, ".csv"))
+# V1. Literature stdevs, vary all params at the same time
+testAll <- sens_analysis_lit(sample_size = 10000,
+                             param2vary = c("growth","mass","MR","perc_time", "cost_pup"))
+                            # No lit values for cost_pup
 
-# ----------------------- Analyze SA results -----------------
-# Set up for RMSE
+# V2. Percent of mean stdevs, vary all params at the same time
+testAll <- sens_analysis_perc_mean(sample_size = 10000, perc_sd = 0.10,
+                                   param2vary = c("growth","mass","MR","perc_time", "cost_pup"))
 
-#Original data is set as rep 1
-data.true <- testAll %>% 
-  filter(rep_num == 1) %>% 
-  select(Age, Sex, with.pup, total_energy)
+# V3. Literature stdevs, vary one param at a time
+testAll <- sens_analysis_lit(sample_size = 10000,
+                             param2vary = c("cost_pup"))
 
-#All replicates except original in one table
-data.reps <- testAll %>% 
-  filter(rep_num != 1) %>% 
-  select(Age, Sex, with.pup, total_energy, rep_num)
+# V4. Percent of mean stdevs, vary one param at a time
+testAll <- sens_analysis_perc_mean(sample_size = 10000, perc_sd = 0.1,
+<<<<<<< Updated upstream
+                                   param2vary = c("MR"))
+=======
+                                   param2vary = c("perc_time"))
+>>>>>>> Stashed changes
 
-# select one rep (can be a group_by later)
-data.sample <- data.reps #%>% 
-#filter(rep_num == 22)
-##------does it make sense to make a loop and look at all of the reps?
+# ***Process SA results***
+# TODO calculate the average and standard error across replicates
+  SA_results <- testAll %>% 
+  pivot_longer(cols = c(total_energy, Growth:new_resting_cost),
+               names_to = "parameter", values_to = "value") %>% 
+  group_by(Sex, Age, Lifestage, with.pup, parameter) %>% #deleted pup_cost
+  summarise(value_mean = mean(value),
+            value_sd = sd(value),
+            n = n(),
+            .groups = "drop") %>% 
+  # Calculate standard error and 95% confidence intervals
+  mutate(value_SE = value_sd/sqrt(n),
+         lower.ci = value_mean - qt(1 - (0.05 / 2), n - 1) * value_SE,
+         upper.ci = value_mean + qt(1 - (0.05 / 2), n - 1) * value_SE) %>% 
+  # group types of otters
+  mutate(otter_type = paste(Sex, with.pup))
 
-calc_rmse <- function(data.true, data.sample) {
-  rmse <- sqrt( mean((data.true - data.sample)^2) )
-  return(rmse)
-}
+#Separate out standard error and new mean values from the Monte Carlo simulations 
+error_results <- SA_results %>% 
+  filter(parameter == "total_energy")
 
-# -- DO this per life stage via group_by
-calc_rmse(data.true$total_energy, data.sample$total_energy)
+# Plot total_energy
+aaaplot <- 
+  ggplot(SA_results %>% 
+         filter(parameter == "total_energy"),
+       aes (x = Age, y = value_mean,
+            color = otter_type)) +
+  geom_errorbar(aes(ymin = lower.ci, ymax = upper.ci)) +
+  geom_point() +
+  geom_line()
 
-## Graphs --------------------------------
+print(aaaplot)
 
-#Males
-MR_m <-ggplot(filter(model_all_reps, Sex == "M"), 
-                   aes(x = Age, y = total_energy,
-                       color = as.factor(rep_num))) +
-  geom_line() +
-  theme(legend.position = "none") +
-  ggtitle("MR, Male")
+## ---- Save Outputs ----
+# TODO need to write in parameter and sd value to file name
 
-(MR_m)
+# Extract input values from the testAll object
+perc_sd <- "0.10b"  # As used in the function call
+<<<<<<< Updated upstream
+param2vary <- "MR"  # As used in the function call
+=======
+param2vary <- "perc_time"  # As used in the function call
+>>>>>>> Stashed changes
 
-MR_m <- ggsave ("MR_m_5.jpeg", width = 4, height = 2.6)
+#Designate location to save them in 
+folder_path <- "~/Documents/Thesis/otteR/Results"
 
-#Female no pup
-MR_f_no <-ggplot(filter(model_all_reps, Sex == "F", with.pup == "no"), 
-                      aes(x = Age, y = total_energy,
-                          color = as.factor(rep_num))) +
-  geom_line() +
-  theme(legend.position = "none") +
-  ggtitle("MR, Female, no pup") 
+# Create the filename using the input values
+filename <- paste0(folder_path,"/SA_results_perc_sd_", perc_sd, "_param_", param2vary, ".csv")
+# Save the results to CSV
+write.csv(SA_results, file = filename, row.names = FALSE)
 
-(MR_f_no)
+#Save file with only TEE values
+filename <- paste0(folder_path,"/SA_results_TEE_", perc_sd, "_param_", param2vary, ".csv")
+# Save the results to CSV
+write.csv(error_results, file = filename, row.names = FALSE)
 
-MR_f_no <- ggsave ("MR_F_no_5.jpeg", width = 4, height = 2.6)
+## ---- Save Plots -----
+# Save the ggplot figure
 
-#Female with Pup
-MR_f_yes <- ggplot(filter(model_all_reps, Sex == "F", with.pup == "yes"), 
-                        aes(x = Age, y = total_energy,
-                            color = as.factor(rep_num))) +
-  geom_line() +
-  theme(legend.position = "none") +
-  ggtitle("MR, Female, with pup")
+## DONT FORGET TO CHANGE THE FILE NAME ##
+<<<<<<< Updated upstream
+ggsave("~/Documents/Thesis/otteR/Plots/MR_0.10_SAplot.png", plot = aaaplot, width = 8, height = 6)
+=======
+ggsave("~/Documents/Thesis/otteR/Plots/perc_time_0.1_SAplot.png", plot = aaaplot, width = 8, height = 6)
+>>>>>>> Stashed changes
 
-(MR_f_yes)
-
-MR_f_yes <- ggsave ("MR_F_yes_5.jpeg", width = 4, height = 2.6)
-
-# TODO: create loops for other variables to test
-# TODO: make SA metrics work (RMSE)
 
