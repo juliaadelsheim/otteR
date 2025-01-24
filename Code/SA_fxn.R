@@ -345,7 +345,11 @@ testAll <- sens_analysis_lit(sample_size = 10000,
 
 # V4. Percent of mean stdevs, vary one param at a time
 testAll <- sens_analysis_perc_mean(sample_size = 10000, perc_sd = 0.1,
+<<<<<<< Updated upstream
                                    param2vary = c("MR"))
+=======
+                                   param2vary = c("perc_time"))
+>>>>>>> Stashed changes
 
 # ***Process SA results***
 # TODO calculate the average and standard error across replicates
@@ -385,7 +389,11 @@ print(aaaplot)
 
 # Extract input values from the testAll object
 perc_sd <- "0.10b"  # As used in the function call
+<<<<<<< Updated upstream
 param2vary <- "MR"  # As used in the function call
+=======
+param2vary <- "perc_time"  # As used in the function call
+>>>>>>> Stashed changes
 
 #Designate location to save them in 
 folder_path <- "~/Documents/Thesis/otteR/Results"
@@ -404,6 +412,10 @@ write.csv(error_results, file = filename, row.names = FALSE)
 # Save the ggplot figure
 
 ## DONT FORGET TO CHANGE THE FILE NAME ##
+<<<<<<< Updated upstream
 ggsave("~/Documents/Thesis/otteR/Plots/MR_0.10_SAplot.png", plot = aaaplot, width = 8, height = 6)
+=======
+ggsave("~/Documents/Thesis/otteR/Plots/perc_time_0.1_SAplot.png", plot = aaaplot, width = 8, height = 6)
+>>>>>>> Stashed changes
 
 
