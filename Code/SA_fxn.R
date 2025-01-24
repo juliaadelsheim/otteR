@@ -331,24 +331,25 @@ sens_analysis_perc_mean <- function(sample_size, perc_sd,
 # Run SA ---------------
 
 # V1. Literature stdevs, vary all params at the same time
-testAll <- sens_analysis_lit(sample_size = 1000,
+testAll <- sens_analysis_lit(sample_size = 10000,
                              param2vary = c("growth","mass","MR","perc_time", "cost_pup"))
+                            # No lit values for cost_pup
 
 # V2. Percent of mean stdevs, vary all params at the same time
-testAll <- sens_analysis_perc_mean(sample_size = 10, perc_sd = 0.10,
+testAll <- sens_analysis_perc_mean(sample_size = 10000, perc_sd = 0.10,
                                    param2vary = c("growth","mass","MR","perc_time", "cost_pup"))
 
 # V3. Literature stdevs, vary one param at a time
-testAll <- sens_analysis_lit(sample_size = 100,
-                             param2vary = c("perc_time"))
+testAll <- sens_analysis_lit(sample_size = 10000,
+                             param2vary = c("cost_pup"))
 
 # V4. Percent of mean stdevs, vary one param at a time
-testAll <- sens_analysis_perc_mean(sample_size = 1000, perc_sd = 0.2,
-                                   param2vary = c("mass"))
+testAll <- sens_analysis_perc_mean(sample_size = 10000, perc_sd = 0.1,
+                                   param2vary = c("MR"))
 
 # ***Process SA results***
 # TODO calculate the average and standard error across replicates
-SA_results <- testAll %>% 
+  SA_results <- testAll %>% 
   pivot_longer(cols = c(total_energy, Growth:new_resting_cost),
                names_to = "parameter", values_to = "value") %>% 
   group_by(Sex, Age, Lifestage, with.pup, parameter) %>% #deleted pup_cost
@@ -383,8 +384,8 @@ print(aaaplot)
 # TODO need to write in parameter and sd value to file name
 
 # Extract input values from the testAll object
-perc_sd <- "lit"  # As used in the function call
-param2vary <- "all"  # As used in the function call
+perc_sd <- "0.10b"  # As used in the function call
+param2vary <- "MR"  # As used in the function call
 
 #Designate location to save them in 
 folder_path <- "~/Documents/Thesis/otteR/Results"
@@ -399,12 +400,10 @@ filename <- paste0(folder_path,"/SA_results_TEE_", perc_sd, "_param_", param2var
 # Save the results to CSV
 write.csv(error_results, file = filename, row.names = FALSE)
 
-TODO # NOT WORKING 
-# ## ---- Save Plots -----
-# #Designate location to save them in 
-# folder_path <- "~/Documents/Thesis/otteR/Plots"
-# # Construct the full path for the plot file
-# aaaplot <- paste0(folder_path, "/SA_plot_perc_sd_", perc_sd, "_param_", param2vary, ".png")
-# # Save the ggplot figure
-# ggsave(aaaplot, plot = plot, width = 8, height = 6)
+## ---- Save Plots -----
+# Save the ggplot figure
+
+## DONT FORGET TO CHANGE THE FILE NAME ##
+ggsave("~/Documents/Thesis/otteR/Plots/MR_0.10_SAplot.png", plot = aaaplot, width = 8, height = 6)
+
 
