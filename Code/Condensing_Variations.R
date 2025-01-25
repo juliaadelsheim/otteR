@@ -266,11 +266,9 @@ mean(final_rest_juv$row_sum)
 # library(tidyverse)
 # library(readxl)
 # 
-Variation_csv <- read_excel("Variation_csv2.xlsx")
+Variation_csv <- read_excel("Variation_csv3.xlsx")
 
 # Calculate summed values for the specified parameters
-
-
 
 
 #### Adult Males ####
