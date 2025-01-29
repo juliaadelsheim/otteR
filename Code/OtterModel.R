@@ -161,3 +161,9 @@ model.run.1 <- otter_model(masses = masses,
                            age_convert = age_convert,
                            cost_pup = 3931)
 
+
+## Save out as csv ##
+folder_path <- "~/Documents/Thesis/otteR/Results"
+filename <- paste0(folder_path,"original_model_run.csv")
+# Save the results to CSV
+write.csv(model.run.1, file = filename, row.names = FALSE)

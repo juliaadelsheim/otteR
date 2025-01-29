@@ -28,6 +28,7 @@ condensed_var <- Variation_csv %>%
 
 print(condensed_var)
 
+write.csv(condensed_var, file = "condensed_variation", row.names = FALSE)
 #Adding up the components of activity budgets
 # Need Juveniles - activity (3) and rest (2)
 #       Pups - activity (3) and rest (6)
