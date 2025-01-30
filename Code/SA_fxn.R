@@ -329,22 +329,23 @@ sens_analysis_perc_mean <- function(sample_size, perc_sd,
 }
 
 # Run SA ---------------
+set.seed(22222)
 
 # V1. Literature stdevs, vary all params at the same time
 testAll <- sens_analysis_lit(sample_size = 10000,
-                             param2vary = c("growth","mass","MR","perc_time", "cost_pup"))
+                             param2vary = c("growth","mass","MR","perc_time","cost_pup"))
                             # No lit values for cost_pup
 
 # V2. Percent of mean stdevs, vary all params at the same time
-testAll <- sens_analysis_perc_mean(sample_size = 10000, perc_sd = 0.10,
+testAll <- sens_analysis_perc_mean(sample_size = 10000, perc_sd = 0.05,
                                    param2vary = c("growth","mass","MR","perc_time", "cost_pup"))
 
 # V3. Literature stdevs, vary one param at a time
 testAll <- sens_analysis_lit(sample_size = 10000,
-                             param2vary = c("cost_pup"))
+                             param2vary = c("MR"))
 
 # V4. Percent of mean stdevs, vary one param at a time
-testAll <- sens_analysis_perc_mean(sample_size = 10, perc_sd = 0.1,
+testAll <- sens_analysis_perc_mean(sample_size = 10000, perc_sd = 0.2,
                                    param2vary = c("MR"))
 
 # ***Process SA results***
@@ -370,7 +371,7 @@ error_results <- SA_results %>%
 
 # Plot total_energy
 aaaplot <- 
-  ggplot(SA_results %>% 
+  ggplot(error_results %>% 
          filter(parameter == "total_energy"),
        aes (x = Age, y = value_mean,
             color = otter_type)) +
@@ -384,7 +385,7 @@ print(aaaplot)
 # TODO need to write in parameter and sd value to file name
 
 # Extract input values from the testAll object
-perc_sd <- "0.10b"  # As used in the function call
+perc_sd <- "lit"  # As used in the function call
 param2vary <- "MR"  # As used in the function call
 
 #Designate location to save them in 
@@ -404,6 +405,7 @@ write.csv(error_results, file = filename, row.names = FALSE)
 # Save the ggplot figure
 
 ## DONT FORGET TO CHANGE THE FILE NAME ##
-ggsave("~/Documents/Thesis/otteR/Plots/MR_0.10_SAplot.png", plot = aaaplot, width = 8, height = 6)
+
+ggsave("~/Documents/Thesis/otteR/Plots/MR_lit_SAplot.png", plot = aaaplot, width = 8, height = 6)
 
 
