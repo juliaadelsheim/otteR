@@ -345,8 +345,8 @@ testAll <- sens_analysis_lit(sample_size = 10000,
                              param2vary = c("perc_time"))
 
 # V4. Percent of mean stdevs, vary one param at a time
-testAll <- sens_analysis_perc_mean(sample_size = 10000, perc_sd = 0.05,
-                                   param2vary = c("growth"))
+testAll <- sens_analysis_perc_mean(sample_size = 10000, perc_sd = 0.2,
+                                   param2vary = c("perc_time"))
 
 # ***Process SA results***
 # TODO calculate the average and standard error across replicates
@@ -385,8 +385,8 @@ print(aaaplot)
 # TODO need to write in parameter and sd value to file name
 
 # Extract input values from the testAll object
-perc_sd <- "0.05"  # As used in the function call
-param2vary <- "growth"  # As used in the function call
+perc_sd <- "0.2"  # As used in the function call
+param2vary <- "perc_time"  # As used in the function call
 
 #Designate location to save them in 
 folder_path <- "~/Documents/Thesis/otteR/Results"
@@ -406,6 +406,6 @@ write.csv(error_results, file = filename, row.names = FALSE)
 
 ## DONT FORGET TO CHANGE THE FILE NAME ##
 
-ggsave("~/Documents/Thesis/otteR/Plots/growth_0.05_SAplot.png", plot = aaaplot, width = 8, height = 6)
+ggsave("~/Documents/Thesis/otteR/Plots/perc_time_0.2_SAplot.png", plot = aaaplot, width = 8, height = 6)
 
 
