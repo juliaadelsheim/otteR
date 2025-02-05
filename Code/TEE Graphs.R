@@ -14,8 +14,9 @@ setwd("~/Documents/Thesis/otteR/Results")
 library(dplyr)
 library(tidyverse)
 library(ggplot2)
+library(RColorBrewer)
 
-# All parameters varied with literature error -----
+# All parameters, lit ---> varied with literature error -----
 # Data------------------------------------------------------------------
 SA_tee <- read.csv(file ='SA_results_perc_sd_lit_param_all.csv') 
 
@@ -24,7 +25,7 @@ SA_tee <- read.csv(file ='SA_results_perc_sd_lit_param_all.csv')
   TEE_plot <- 
   ggplot(SA_tee %>% filter(parameter == "total_energy"),
          aes(x = Age, y = value_mean, color = otter_type)) +
-  scale_color_viridis_d(name = NULL, labels = c("Female without pup", "Female with a pup", "Male")) +
+  scale_color_brewer(palette = "Dark2", name = NULL, labels = c("Female without pup", "Female with a pup", "Male")) +
   ylab("Energy Expenditure (kJ/day)") +
   xlab("Age (yrs)") +
   geom_errorbar(aes(ymin = lower.ci, ymax = upper.ci), width = .5) +
@@ -41,7 +42,8 @@ print(TEE_plot)
 ggsave("~/Documents/Thesis/otteR/Plots/SA_all_param_lit.png", plot = TEE_plot, width = 8, height = 6)
 
 
-# All parameters varied with 10% std dev -----
+# All parameters, 10% -> varied with 10% std dev -----------------------------------
+
 # Data------------------------------------------------------------------
 SA_tee10 <- read.csv(file ='SA_results_perc_sd_0.1_param_all.csv') 
 
@@ -50,7 +52,7 @@ SA_tee10 <- read.csv(file ='SA_results_perc_sd_0.1_param_all.csv')
 TEE_plot <- 
   ggplot(SA_tee10 %>% filter(parameter == "total_energy"),
          aes(x = Age, y = value_mean, color = otter_type)) +
-  scale_color_viridis_d(name = NULL, labels = c("Female without pup", "Female with a pup", "Male")) +
+  scale_color_brewer(palette = "Dark2", name = NULL, labels = c("Female without pup", "Female with a pup", "Male")) +
   ylab("Energy Expenditure (kJ/day)") +
   xlab("Age (yrs)") +
   geom_errorbar(aes(ymin = lower.ci, ymax = upper.ci), width = .5) +
@@ -64,6 +66,47 @@ TEE_plot <-
 print(TEE_plot)
 
 ggsave("~/Documents/Thesis/otteR/Plots/SA_all_param_0.1.png", plot = TEE_plot, width = 8, height = 6)
+
+
+# Mass Specific TEE, all parameters, literature graph ------------------
+
+# Data ---------------------------
+masses2 <- read.csv(file ='mass_growth_with.pup.csv') 
+
+mass_spec_TEE <- SA_tee %>% 
+  filter(parameter == "total_energy") %>% 
+  left_join(masses2, by = c("Sex", "with.pup", "Age")) %>%  # Avoids collapsing data
+  mutate(mass_spec = value_mean / Av_mass)
+
+# Graph --------------------------
+
+mass_spec_TEE_plot <- 
+  ggplot(mass_spec_TEE,
+         aes(x = Age, y = mass_spec, color = otter_type)) +
+  scale_color_brewer(palette = "Dark2", name = NULL, labels = c("Female without pup", "Female with a pup", "Male")) +
+  ylab("Mass Specific Energy Expenditure \n (kJ/kg/day)") +
+  xlab("Age (yrs)") +
+  scale_y_continuous(limits = c(500, 900)) +
+  geom_errorbar(aes(ymin = lower.ci/Av_mass, ymax = upper.ci/Av_mass), width = .5) +
+  geom_point() +
+  geom_line() +
+  theme_bw()+
+  theme(legend.position = c(0.5, 0.5),  # Moves legend to the bottom center (0.5)
+        legend.justification = c(0.5, 0),  # Aligns it properly
+        legend.background = element_rect(fill = "white", color = "black")) 
+
+print(mass_spec_TEE_plot)
+
+#Save
+ggsave("~/Documents/Thesis/otteR/Plots/Mass_Spec_SA_all_param_lit.png", plot = mass_spec_TEE_plot, width = 8, height = 6)
+
+
+
+
+
+
+# ---- Garbage ----
+
 
 
 # Original Model Run graph with error from SA

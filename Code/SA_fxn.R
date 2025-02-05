@@ -30,7 +30,7 @@ act_budgets <- read.csv(file = 'ActivityBudgets.csv')
 age_convert <- read.csv(file = 'age_lifestage.csv')
 
 # TODO change values for standard deviation later
-stdev_MR_perc_time <- read.csv(file= 'Stdev_MR_perc_time.csv') %>%
+stdev_MR_perc_time <- read.csv(file= 'Stdev_MR_perc_time.csv') %>% 
   filter(!is.na(stdev_perc_time)) %>%
   filter(!is.na(stdev_MR))
 
@@ -329,11 +329,11 @@ sens_analysis_perc_mean <- function(sample_size, perc_sd,
 }
 
 # Run SA ---------------
-set.seed(22222)
+set.seed(222)
 
 # V1. Literature stdevs, vary all params at the same time
-testAll <- sens_analysis_lit(sample_size = 10000,
-                             param2vary = c("growth","mass","MR","perc_time"))
+testAll <- sens_analysis_lit(sample_size = 500,
+                             param2vary = c("growth","mass","MR","perc_time","cost_pup"))
                             # No lit values for cost_pup
 
 # V2. Percent of mean stdevs, vary all params at the same time
@@ -341,7 +341,7 @@ testAll <- sens_analysis_perc_mean(sample_size = 10000, perc_sd = 0.05,
                                    param2vary = c("growth","mass","MR","perc_time","cost_pup"))
 
 # V3. Literature stdevs, vary one param at a time
-testAll <- sens_analysis_lit(sample_size = 10000,
+testAll <- sens_analysis_lit(sample_size = 500,
                              param2vary = c("perc_time"))
 
 # V4. Percent of mean stdevs, vary one param at a time
@@ -385,8 +385,8 @@ print(aaaplot)
 # TODO need to write in parameter and sd value to file name
 
 # Extract input values from the testAll object
-perc_sd <- "0.05"  # As used in the function call
-param2vary <- "all"  # As used in the function call
+perc_sd <- "lit"  # As used in the function call
+param2vary <- "MR"  # As used in the function call
 
 #Designate location to save them in 
 folder_path <- "~/Documents/Thesis/otteR/Results"
@@ -406,6 +406,6 @@ write.csv(error_results, file = filename, row.names = FALSE)
 
 ## DONT FORGET TO CHANGE THE FILE NAME ##
 
-ggsave("~/Documents/Thesis/otteR/Plots/all_0.05_SAplot.png", plot = aaaplot, width = 8, height = 6)
+ggsave("~/Documents/Thesis/otteR/Plots/MR_lit_SAplot.png", plot = aaaplot, width = 8, height = 6)
 
 
