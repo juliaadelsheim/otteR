@@ -329,7 +329,7 @@ sens_analysis_perc_mean <- function(sample_size, perc_sd,
 }
 
 # Run SA ---------------
-set.seed(222)
+set.seed(22222)
 
 # V1. Literature stdevs, vary all params at the same time
 testAll <- sens_analysis_lit(sample_size = 500,
@@ -337,7 +337,7 @@ testAll <- sens_analysis_lit(sample_size = 500,
                             # No lit values for cost_pup
 
 # V2. Percent of mean stdevs, vary all params at the same time
-testAll <- sens_analysis_perc_mean(sample_size = 10000, perc_sd = 0.05,
+testAll <- sens_analysis_perc_mean(sample_size = 10000, perc_sd = 0.2,
                                    param2vary = c("growth","mass","MR","perc_time","cost_pup"))
 
 # V3. Literature stdevs, vary one param at a time
@@ -346,7 +346,7 @@ testAll <- sens_analysis_lit(sample_size = 500,
 
 # V4. Percent of mean stdevs, vary one param at a time
 testAll <- sens_analysis_perc_mean(sample_size = 10000, perc_sd = 0.2,
-                                   param2vary = c("MR"))
+                                   param2vary = c("mass"))
 
 # ***Process SA results***
 # TODO calculate the average and standard error across replicates
