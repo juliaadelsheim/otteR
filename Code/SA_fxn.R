@@ -30,7 +30,7 @@ act_budgets <- read.csv(file = 'ActivityBudgets.csv')
 age_convert <- read.csv(file = 'age_lifestage.csv')
 
 # TODO change values for standard deviation later
-stdev_MR_perc_time <- read.csv(file= 'Stdev_MR_perc_time.csv') %>%
+stdev_MR_perc_time <- read.csv(file= 'Stdev_MR_perc_time.csv') %>% 
   filter(!is.na(stdev_perc_time)) %>%
   filter(!is.na(stdev_MR))
 
@@ -329,27 +329,24 @@ sens_analysis_perc_mean <- function(sample_size, perc_sd,
 }
 
 # Run SA ---------------
+set.seed(22222)
 
 # V1. Literature stdevs, vary all params at the same time
-testAll <- sens_analysis_lit(sample_size = 10000,
-                             param2vary = c("growth","mass","MR","perc_time", "cost_pup"))
+testAll <- sens_analysis_lit(sample_size = 500,
+                             param2vary = c("growth","mass","MR","perc_time","cost_pup"))
                             # No lit values for cost_pup
 
 # V2. Percent of mean stdevs, vary all params at the same time
-testAll <- sens_analysis_perc_mean(sample_size = 10000, perc_sd = 0.10,
-                                   param2vary = c("growth","mass","MR","perc_time", "cost_pup"))
+testAll <- sens_analysis_perc_mean(sample_size = 10000, perc_sd = 0.2,
+                                   param2vary = c("growth","mass","MR","perc_time","cost_pup"))
 
 # V3. Literature stdevs, vary one param at a time
-testAll <- sens_analysis_lit(sample_size = 10000,
-                             param2vary = c("cost_pup"))
+testAll <- sens_analysis_lit(sample_size = 500,
+                             param2vary = c("perc_time"))
 
 # V4. Percent of mean stdevs, vary one param at a time
-testAll <- sens_analysis_perc_mean(sample_size = 10000, perc_sd = 0.1,
-<<<<<<< Updated upstream
-                                   param2vary = c("MR"))
-=======
-                                   param2vary = c("perc_time"))
->>>>>>> Stashed changes
+testAll <- sens_analysis_perc_mean(sample_size = 10000, perc_sd = 0.2,
+                                   param2vary = c("mass"))
 
 # ***Process SA results***
 # TODO calculate the average and standard error across replicates
@@ -374,7 +371,7 @@ error_results <- SA_results %>%
 
 # Plot total_energy
 aaaplot <- 
-  ggplot(SA_results %>% 
+  ggplot(error_results %>% 
          filter(parameter == "total_energy"),
        aes (x = Age, y = value_mean,
             color = otter_type)) +
@@ -388,12 +385,8 @@ print(aaaplot)
 # TODO need to write in parameter and sd value to file name
 
 # Extract input values from the testAll object
-perc_sd <- "0.10b"  # As used in the function call
-<<<<<<< Updated upstream
+perc_sd <- "lit"  # As used in the function call
 param2vary <- "MR"  # As used in the function call
-=======
-param2vary <- "perc_time"  # As used in the function call
->>>>>>> Stashed changes
 
 #Designate location to save them in 
 folder_path <- "~/Documents/Thesis/otteR/Results"
@@ -412,10 +405,7 @@ write.csv(error_results, file = filename, row.names = FALSE)
 # Save the ggplot figure
 
 ## DONT FORGET TO CHANGE THE FILE NAME ##
-<<<<<<< Updated upstream
-ggsave("~/Documents/Thesis/otteR/Plots/MR_0.10_SAplot.png", plot = aaaplot, width = 8, height = 6)
-=======
-ggsave("~/Documents/Thesis/otteR/Plots/perc_time_0.1_SAplot.png", plot = aaaplot, width = 8, height = 6)
->>>>>>> Stashed changes
+
+ggsave("~/Documents/Thesis/otteR/Plots/MR_lit_SAplot.png", plot = aaaplot, width = 8, height = 6)
 
 
