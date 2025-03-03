@@ -174,7 +174,8 @@ ggsave("~/Documents/Thesis/otteR/Plots/TEE_plot_w_SA_sd_errorbar.png", plot = TE
 # Mass Specific OG model with SA Variation ----
 
 # Data ----
-
+SA_lit_all_sd <- read.csv(file = "SA_results_TEE_lit_param_all.csv")
+#Need to run model on different R script (OtterModel.R) to get model.run.1
 # Read in mass dataset 
 masses2 <- read.csv(file ='mass_growth_with.pup.csv') 
 
@@ -188,8 +189,13 @@ model.run.og.ms <- model.run.1 %>%
     Sex == "F" & with.pup == "yes" ~ "Female with pup",
     Sex == "F" & with.pup == "no" ~ "Female without pup",
     Sex == "M" ~ "Male")) %>% 
-  mutate(mass_spec_TEE = total_energy / Av_mass) %>% 
+  mutate(mass_spec_TEE = total_energy / Av_mass)  %>% 
+ # SD doesnt work this way, so # out this line forr no sd on graph
   mutate(mass_spec_sd = SA_lit_all_sd$value_sd / Av_mass)
+
+#Save mass specific data points
+write.csv(model.run.og.ms, file = "model.run.og.ms.csv", row.names = FALSE)
+
 
 # Sort data by sex/with.pup so it lines up with other dataset
 SA_lit_all_sd <- SA_lit_all_sd %>% 
@@ -204,13 +210,14 @@ mass_spec_TEE_plot_og <- model.run.og.ms %>%
   ylab("Mass Specific Energy Expenditure \n (kJ/kg/day)") +
   xlab("Age (yrs)") +
   coord_cartesian(ylim = c(400, 900)) +
-  geom_ribbon(aes(ymin = mass_spec_TEE - mass_spec_sd, 
-                  ymax = mass_spec_TEE + mass_spec_sd, 
-                  fill = Sex_pup), 
-              alpha = 0.3, color = NA) +
+# Take out error bars/shading because we cant calculate mass specific error 
+  #geom_ribbon(aes(ymin = mass_spec_TEE - mass_spec_sd, 
+              #     ymax = mass_spec_TEE + mass_spec_sd, 
+              #     fill = Sex_pup), 
+              # alpha = 0.3, color = NA) +
   geom_point() +
   geom_line() +
-  theme_bw()+
+  theme_bw() +
   theme(legend.position = c(0.5, 0.55),  # Moves legend to the bottom center (0.5)
         legend.justification = c(0.5, 0.13),  # Aligns it properly
         legend.background = element_rect(fill = "white", color = "black"))
@@ -221,7 +228,7 @@ mass_spec_TEE_plot_og <- model.run.og.ms %>%
 print(mass_spec_TEE_plot_og)
 
 #Save
-ggsave("~/Documents/Thesis/otteR/Plots/Mass_Spec_TEE_plot_w_SA_sd.png", plot = mass_spec_TEE_plot_og, width = 8, height = 6)
+ggsave("~/Documents/Thesis/otteR/Plots/Mass_Spec_TEE_plot_NO_sd.png", plot = mass_spec_TEE_plot_og, width = 8, height = 6)
 
 
 
