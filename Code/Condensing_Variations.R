@@ -28,7 +28,9 @@ condensed_var <- Variation_csv %>%
 
 print(condensed_var)
 
-write.csv(condensed_var, file = "condensed_variation", row.names = FALSE)
+##### Save csv for appendix
+write.csv(condensed_var, file = "condensed_variation_new.csv", row.names = FALSE)
+
 #Adding up the components of activity budgets
 # Need Juveniles - activity (3) and rest (2)
 #       Pups - activity (3) and rest (6)
@@ -221,9 +223,9 @@ final_active_juv <- active1 %>%
 
 #Calculate std dev- double checking the calue calculated above
 sd(final_active_juv$row_sum)
-# 9.228797
+# 9.317197
 mean(final_active_juv$row_sum)
-# 30.73849
+# 30.72943
 
 ############ Resting
 rest1 <- Variation_csv %>%
@@ -257,9 +259,9 @@ final_rest_juv <- rest1 %>%
 
 #Calculate std dev- double checking the calue calculated above
 sd(final_rest_juv$row_sum)
-# 15.2303
+# 15.3462
 mean(final_rest_juv$row_sum)
-# 33.09653
+# 33.1278
 
 
 
@@ -317,9 +319,9 @@ final_active_male_adult <- active1 %>%
 
 #Calculate std dev- double checking the calue calculated above
 sd(final_active_male_adult$row_sum)
-# 7.618868
+# 7.571425
 mean(final_active_male_adult$row_sum)
-# 27.09996
+# 27.03038
 
 
 
@@ -375,9 +377,9 @@ final_active_juv <- active1 %>%
  # mutate(std_dev = sd(row_sum))
 
 sd(final_active_juv$row_sum)
-# 9.228797
+# 9.283093
 mean(final_active_juv$row_sum)
-# 30.73849
+# 30.80059
 
 ## Adult Activity
 
@@ -431,7 +433,7 @@ subadult_active <- final_active_juv$row_sum_juv %>%
 
 #standard deviation
 sd(subadult_active$subadult_perc_time_active)
- #5.981999
+ # 5.999377
 
 #---- Perc Time Rest ---
 
@@ -487,7 +489,7 @@ subadult_rest <- final_rest_juv$row_sum %>%
   mutate(std_dev = sd(subadult_perc_time_rest))
 
 sd(subadult_rest$subadult_perc_time_rest)
-# 8.595079
+# 8.495024
 
 # ---- Perc Time Forage ---
 
@@ -525,7 +527,7 @@ subadult_forage <- final_forage_juv$values_sim %>%
   mutate(std_dev = sd(subadult_perc_time_forage))
 
 sd(subadult_forage$subadult_perc_time_forage)
-# 9.228917
+# 9.136484
 
 # ---- MR ----
 
@@ -565,7 +567,7 @@ subadult_MRactive <- final_MRactive_juv$values_sim_kj_kg_min %>%
   mutate(std_dev = sd(subadult_MRactive))
 
 sd(subadult_MRactive$subadult_MRactive)
-# 0.07338876
+# 0.07344302
 
 # ---- Rest ---
 
@@ -604,7 +606,7 @@ subadult_MRrest <- final_MRrest_juv$values_sim_kj_kg_min %>%
   mutate(std_dev = sd(subadult_MRrest))
 
 sd(subadult_MRrest$subadult_MRrest)
-# 0.07684956
+# 0.07695765
 
 # ---- Foraging ---
 
@@ -642,9 +644,15 @@ subadult_MRforage <- final_MRforage_juv$values_sim_kj_kg_min %>%
   mutate(std_dev = sd(subadult_MRforage))
 
 sd(subadult_MRforage$subadult_MRforage)
-# 0.10632
+# 0.1072608
 
 #### Notes  ####
+# 3-9-2025
+
+# Updated activity budgets and MRs and reran the codes to make sure that the SDs 
+# on the CSVs used are correct with updated values after I found a mistake this week
+
+
 # 1-17-2025
 
 # I ran the code for males and juveniles and averaged them after generating 

@@ -332,7 +332,7 @@ sens_analysis_perc_mean <- function(sample_size, perc_sd,
 set.seed(22222)
 
 # V1. Literature stdevs, vary all params at the same time
-testAll <- sens_analysis_lit(sample_size = 500,
+testAll <- sens_analysis_lit(sample_size = 10000,
                              param2vary = c("growth","mass","MR","perc_time","cost_pup"))
                             # No lit values for cost_pup
 
@@ -386,7 +386,7 @@ print(aaaplot)
 
 # Extract input values from the testAll object
 perc_sd <- "lit"  # As used in the function call
-param2vary <- "MR"  # As used in the function call
+param2vary <- "all_new"  # As used in the function call
 
 #Designate location to save them in 
 folder_path <- "~/Documents/Thesis/otteR/Results"
@@ -406,6 +406,6 @@ write.csv(error_results, file = filename, row.names = FALSE)
 
 ## DONT FORGET TO CHANGE THE FILE NAME ##
 
-ggsave("~/Documents/Thesis/otteR/Plots/MR_lit_SAplot.png", plot = aaaplot, width = 8, height = 6)
+ggsave("~/Documents/Thesis/otteR/Plots/new_all_lit_SAplot.png", plot = aaaplot, width = 8, height = 6)
 
 

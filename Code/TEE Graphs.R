@@ -16,9 +16,11 @@ library(tidyverse)
 library(ggplot2)
 library(RColorBrewer)
 
-# All parameters, lit ---> SAvaried with literature error -----
+# All parameters, lit ---> SA varied with literature error -----
 # Data------------------------------------------------------------------
-SA_tee <- read.csv(file ='SA_results_perc_sd_lit_param_all.csv') 
+#SA_tee <- read.csv(file ='SA_results_perc_sd_lit_param_all.csv')
+#Found typo in act budget for pups, redid analysis, used new results
+SA_tee <- read.csv(file ='SA_results_perc_sd_lit_param_all_new.csv') 
 
 # Graphs ---------------------------------------------------------------
 
@@ -105,7 +107,11 @@ ggsave("~/Documents/Thesis/otteR/Plots/Mass_Spec_SA_all_param_lit.png", plot = m
 
 
 # Data ----
-SA_lit_all_sd <- read.csv(file = "SA_results_TEE_lit_param_all.csv")
+
+#SA_lit_all_sd <- read.csv(file = "SA_results_TEE_lit_param_all.csv")
+
+#Found typo in act budget for pups, redid analysis, used new results
+SA_lit_all_sd <- read.csv(file = "SA_results_TEE_lit_param_all_new.csv")
 
 #Need to run model on different R script (OtterModel.R) to get model.run.1
 
@@ -146,7 +152,7 @@ TEE_plot_og <- model.run.og %>%
 print(TEE_plot_og)
 
 #Save
-ggsave("~/Documents/Thesis/otteR/Plots/TEE_plot_w_SA_sd_ribbon.png", plot = TEE_plot_og, width = 8, height = 6)
+ggsave("~/Documents/Thesis/otteR/Plots/TEE_plot_w_SA_sd_ribbon_new.png", plot = TEE_plot_og, width = 8, height = 6)
 
 
 # Graph - Error Bars ----
@@ -174,7 +180,7 @@ ggsave("~/Documents/Thesis/otteR/Plots/TEE_plot_w_SA_sd_errorbar.png", plot = TE
 # Mass Specific OG model with SA Variation ----
 
 # Data ----
-SA_lit_all_sd <- read.csv(file = "SA_results_TEE_lit_param_all.csv")
+SA_lit_all_sd <- read.csv(file = "SA_results_TEE_lit_param_all_new.csv")
 #Need to run model on different R script (OtterModel.R) to get model.run.1
 # Read in mass dataset 
 masses2 <- read.csv(file ='mass_growth_with.pup.csv') 
@@ -194,7 +200,7 @@ model.run.og.ms <- model.run.1 %>%
   mutate(mass_spec_sd = SA_lit_all_sd$value_sd / Av_mass)
 
 #Save mass specific data points
-write.csv(model.run.og.ms, file = "model.run.og.ms.csv", row.names = FALSE)
+write.csv(model.run.og.ms, file = "model.run.og.ms_new.csv", row.names = FALSE)
 
 
 # Sort data by sex/with.pup so it lines up with other dataset
@@ -218,7 +224,7 @@ mass_spec_TEE_plot_og <- model.run.og.ms %>%
   geom_point() +
   geom_line() +
   theme_bw() +
-  theme(legend.position = c(0.5, 0.55),  # Moves legend to the bottom center (0.5)
+  theme(legend.position = c(0.75, 0.1),  # Moves legend to the bottom center (0.5)
         legend.justification = c(0.5, 0.13),  # Aligns it properly
         legend.background = element_rect(fill = "white", color = "black"))
         # legend.key.size = unit(0.4, "cm"),  # Reduces legend key size (default ~1cm)
@@ -228,7 +234,7 @@ mass_spec_TEE_plot_og <- model.run.og.ms %>%
 print(mass_spec_TEE_plot_og)
 
 #Save
-ggsave("~/Documents/Thesis/otteR/Plots/Mass_Spec_TEE_plot_NO_sd.png", plot = mass_spec_TEE_plot_og, width = 8, height = 6)
+ggsave("~/Documents/Thesis/otteR/Plots/Mass_Spec_TEE_plot_NO_sd_new.png", plot = mass_spec_TEE_plot_og, width = 8, height = 6)
 
 
 
