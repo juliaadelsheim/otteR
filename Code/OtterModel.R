@@ -13,8 +13,8 @@ rm(list = ls())
 setwd("~/Documents/Thesis/otteR/Data")
 
 # Packages--------------------------------------------------------------
-library(dplyr)
 library(tidyverse)
+library(dplyr)
 library(ggplot2)
 
 #Constants--------------------------------------------------------------
@@ -164,6 +164,6 @@ model.run.1 <- otter_model(masses = masses,
 
 ## Save out as csv ##
 folder_path <- "~/Documents/Thesis/otteR/Results"
-filename <- paste0(folder_path,"original_model_run.csv")
+filename <- paste0("original_model_run_new.csv")
 # Save the results to CSV
 write.csv(model.run.1, file = filename, row.names = FALSE)
