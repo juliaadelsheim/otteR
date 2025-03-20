@@ -73,7 +73,7 @@ prey_energy_calcs <- diet_scenarios %>%
   mutate(ecological_ratio = sum_og_ing_mass_per100_items/sum_ing_mass_per100items) %>% 
   mutate(ing_mass_per100kJ = cap_mass_per100kJ/ecological_ratio) 
 
-# Save Prey Energy Calcs ----------------------------------------------------- 
+# Save Prey Energy Calcs 
 folder_path <- "~/Documents/Thesis/otteR/Results"
 write.csv(prey_energy_calcs, file.path(folder_path, "prey_energy_calcs.csv"), row.names=FALSE)
 
@@ -84,7 +84,7 @@ write.csv(prey_energy_calcs, file.path(folder_path, "prey_energy_calcs.csv"), ro
 #   proportional edible biomass of the prey item divided by the ave mass of the edible portion 
 #   of that species. So I think it was easiest to make "multipliers" for each species 
 
-# Species Multipliers ---------------------------------------------------------------
+# Subset Prey Species-----------------------------------------------------------------------------
 #Create multipliers for each prey species 
 
 # Select out the proportion of edible biomass calculations needed to calculate 
@@ -185,22 +185,6 @@ turban_snail <- diet_scenarios %>%
   filter(species == "turban_snail") %>% 
   rename(diet_1 = "1", diet_2 = "2", diet_3 = "3", diet_4 = "4", diet_5 = "5")
 
-
-# --- # --- # --- # --- # --- # --- # --- # --- # --- # --- # --- # --- # --- # --- # --- # --- 
-
-# Model Output ----------------------------------------------------------
-# Next step is to either read in TEE output csv or run the model to get TEE outputs
-
-#Choose model results you want to use- need total energy expenditure values
-model_results <- read.csv("~/Documents/Thesis/otteR/Results/original_model_run_new.csv") 
-
-# Read in mass data so we can calculate % body mass by diet 
-masses <- read.csv(file ='mass_growth.csv') 
-
-# Add mass to model outputs 
-model_results <- model_results %>% 
-  left_join(masses %>% select(Age, Sex, Av_mass), by = c("Age","Sex"))
-
 # Subset Diets ------------------------------------------------------------
 # We want to use the prey energy values that correspond to each specific diet 
 
@@ -224,9 +208,25 @@ diet5 <- prey_energy_calcs %>%
 energy_density_all_diets <- prey_energy_calcs %>% 
   summarise(mean(total_energy_density)) %>% 
   pivot_wider(names_from ="diet", values_from = "mean(total_energy_density)")
+
+
+# Model Output ---------------------------------------------------------------------------
+# Next step is to either read in TEE output csv or run the model to get TEE outputs
+
+#Choose model results you want to use- need total energy expenditure values
+model_results <- read.csv("~/Documents/Thesis/otteR/Results/original_model_run_new.csv") 
+
+# Read in mass data so we can calculate % body mass by diet 
+masses <- read.csv(file ='mass_growth.csv') 
+
+# Add mass to model outputs 
+model_results <- model_results %>% 
+  left_join(masses %>% select(Age, Sex, Av_mass), by = c("Age","Sex"))
  
 
 # Diet Analysis ------------------------------------------------------------------
+
+# Calculate out all of the prey items by species and within each diet
 
 # Diet 1 --------------------------------------------------------------------------
 
