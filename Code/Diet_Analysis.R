@@ -5,22 +5,23 @@
 #Author: Julia Adelsheim
 #Collaborators: Andreas Novotny 
 
+# Notes -------------------------------------------------------------------------------
 # Prey Energy Calculations from Otter Model v.26 in excel
 # This is to set up the diet analysis using model output values later using a few 
 #  of the values calculated in this script. 
 
-# Diet Scenarios are: 
-# Diet 1 = Cancer spp crab and abalone
-# Diet 2 = Kelp crab and bivalves
-# Diet 3 = Marine snails
-# Diet 4 = Urchin
-# Diet 5 = Average diet
+#  Diet Scenarios are: 
+#  Diet 1 = Cancer spp crab and abalone
+#  Diet 2 = Kelp crab and bivalves
+#  Diet 3 = Marine snails
+#  Diet 4 = Urchin
+#  Diet 5 = Average diet
 # 
-# Sources: 
-#   Diets 1-3: Tinker et al., 2007
-#   Diet 4: Fujii et al., 2017
-#   Diet 5: Tinker, 2004
-#   Energy density, mass, % edible values: Oftedal et al., 2007
+#  Sources: 
+#    Diets 1-3: Tinker et al., 2007
+#    Diet 4: Fujii et al., 2017
+#    Diet 5: Tinker, 2004
+#    Energy density, mass, % edible values: Oftedal et al., 2007
 
 # In app- diet scenario(s) is(are) changeable- 
 #  User should be able to edit: 
@@ -77,10 +78,11 @@ folder_path <- "~/Documents/Thesis/otteR/Results"
 write.csv(prey_energy_calcs, file.path(folder_path, "prey_energy_calcs.csv"), row.names=FALSE)
 
 # --- # --- # --- # --- # --- # --- # --- # --- # --- # --- # --- # --- # --- # --- # --- # --- 
+
 # To calculate the # of prey items of each species, we have to: divide the gross energy
 #   by the specific diet's total energy density, then multiply that by the 
 #   proportional edible biomass of the prey item divided by the ave mass of the edible portion 
-#   of that species. So I think it was easiest to make multipliers for each species 
+#   of that species. So I think it was easiest to make "multipliers" for each species 
 
 # Species Multipliers ---------------------------------------------------------------
 #Create multipliers for each prey species 
@@ -185,8 +187,9 @@ turban_snail <- diet_scenarios %>%
 
 
 # --- # --- # --- # --- # --- # --- # --- # --- # --- # --- # --- # --- # --- # --- # --- # --- 
-# Next step is to either read in TEE output csv or run the model to get TEE outputs
+
 # Model Output ----------------------------------------------------------
+# Next step is to either read in TEE output csv or run the model to get TEE outputs
 
 #Choose model results you want to use- need total energy expenditure values
 model_results <- read.csv("~/Documents/Thesis/otteR/Results/original_model_run_new.csv") 
@@ -226,6 +229,7 @@ energy_density_all_diets <- prey_energy_calcs %>%
 # Diet Analysis ------------------------------------------------------------------
 
 # Diet 1 --------------------------------------------------------------------------
+
 diet1_analysis <- model_results %>% 
   # Clean up df 
   select(Sex, Age, Lifestage, with.pup, total_energy, Av_mass) %>% 
@@ -447,3 +451,13 @@ diet5_analysis <- model_results %>%
 #Save output
 folder_path <- "~/Documents/Thesis/otteR/Results"
 write.csv(diet5_analysis, file.path(folder_path, "Diet5_Analysis.csv"), row.names=FALSE)
+
+# I made this code my 
+
+#     BBBB  III  TTTTT  CCCC  H   H
+#     B   B  I     T   C      H   H
+#     BBBB   I     T   C      HHHHH
+#     B   B  I     T   C      H   H
+#     BBBB  III    T    CCCC  H   H
+
+
