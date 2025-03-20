@@ -85,6 +85,19 @@ write.csv(prey_energy_calcs, file.path(folder_path, "prey_energy_calcs.csv"), ro
 # Species Multipliers ---------------------------------------------------------------
 #Create multipliers for each prey species 
 
+# Select out the proportion of edible biomass calculations needed to calculate 
+#   number of prey items consumed 
+
+prop_edible_biomass_df <- prey_energy_calcs %>%
+  # Select relevant columns
+  select(diet, species, prop_edible_biomass) %>%  
+  # Sort by species
+  arrange(species) %>% 
+  # Separate by diet
+  pivot_wider(names_from = diet, values_from = prop_edible_biomass)
+
+# Now create a df of values for each species 
+
 abalone <- diet_scenarios %>% 
   group_by(species) %>% 
   filter(species == "abalone") %>% 
@@ -93,12 +106,10 @@ abalone <- diet_scenarios %>%
   summarise(portion_edible = mean(portion_edible), 
             mass_edible = mean(mass_edible), 
             energy_density = mean(energy_density)) %>% 
-
-# TODO FIgure out this chunk of code, how to isolate one cell to multiply it
-   mutate(prop_edible_biomass_diet1 = ifelse(diet == "1",
-                                            filter(species == "abalone" %>% 
-                                            pull(prop_edible_biomass))))
-
+  right_join(., prop_edible_biomass_df, by = "species") %>% 
+  filter(species == "abalone") %>% 
+  rename(diet_1 = "1", diet_2 = "2", diet_3 = "3", diet_4 = "4", diet_5 = "5")
+         
 cancer_crab <- diet_scenarios %>% 
   group_by(species) %>% 
   filter(species == "cancer_crabs") %>% 
@@ -106,7 +117,11 @@ cancer_crab <- diet_scenarios %>%
   select(!diet) %>% 
   summarise(portion_edible = mean(portion_edible), 
             mass_edible = mean(mass_edible), 
-            energy_density = mean(energy_density))
+            energy_density = mean(energy_density)) %>% 
+  right_join(., prop_edible_biomass_df, by = "species") %>% 
+  filter(species == "cancer_crabs") %>% 
+  rename(diet_1 = "1", diet_2 = "2", diet_3 = "3", diet_4 = "4", diet_5 = "5")
+ 
 
 kelp_crab <- diet_scenarios %>% 
   group_by(species) %>% 
@@ -115,7 +130,10 @@ kelp_crab <- diet_scenarios %>%
   select(!diet) %>% 
   summarise(portion_edible = mean(portion_edible), 
             mass_edible = mean(mass_edible), 
-            energy_density = mean(energy_density))
+            energy_density = mean(energy_density)) %>% 
+  right_join(., prop_edible_biomass_df, by = "species") %>% 
+  filter(species == "kelp_crab") %>% 
+  rename(diet_1 = "1", diet_2 = "2", diet_3 = "3", diet_4 = "4", diet_5 = "5")
 
 urchin <- diet_scenarios %>% 
   group_by(species) %>% 
@@ -124,7 +142,10 @@ urchin <- diet_scenarios %>%
   select(!diet) %>% 
   summarise(portion_edible = mean(portion_edible), 
             mass_edible = mean(mass_edible), 
-            energy_density = mean(energy_density))
+            energy_density = mean(energy_density)) %>% 
+  right_join(., prop_edible_biomass_df, by = "species") %>% 
+  filter(species == "urchin") %>% 
+  rename(diet_1 = "1", diet_2 = "2", diet_3 = "3", diet_4 = "4", diet_5 = "5")
 
 clam <- diet_scenarios %>% 
   group_by(species) %>% 
@@ -133,7 +154,10 @@ clam <- diet_scenarios %>%
   select(!diet) %>% 
   summarise(portion_edible = mean(portion_edible), 
             mass_edible = mean(mass_edible), 
-            energy_density = mean(energy_density))
+            energy_density = mean(energy_density)) %>% 
+  right_join(., prop_edible_biomass_df, by = "species") %>% 
+  filter(species == "clam") %>% 
+  rename(diet_1 = "1", diet_2 = "2", diet_3 = "3", diet_4 = "4", diet_5 = "5")
 
 mussel <- diet_scenarios %>% 
   group_by(species) %>% 
@@ -142,7 +166,10 @@ mussel <- diet_scenarios %>%
   select(!diet) %>% 
   summarise(portion_edible = mean(portion_edible), 
             mass_edible = mean(mass_edible), 
-            energy_density = mean(energy_density))
+            energy_density = mean(energy_density)) %>% 
+  right_join(., prop_edible_biomass_df, by = "species") %>% 
+  filter(species == "mussel") %>% 
+  rename(diet_1 = "1", diet_2 = "2", diet_3 = "3", diet_4 = "4", diet_5 = "5")
 
 turban_snail <- diet_scenarios %>% 
   group_by(species) %>% 
@@ -151,15 +178,17 @@ turban_snail <- diet_scenarios %>%
   select(!diet) %>% 
   summarise(portion_edible = mean(portion_edible), 
             mass_edible = mean(mass_edible), 
-            energy_density = mean(energy_density)) 
-  
-  
+            energy_density = mean(energy_density)) %>% 
+  right_join(., prop_edible_biomass_df, by = "species") %>% 
+  filter(species == "turban_snail") %>% 
+  rename(diet_1 = "1", diet_2 = "2", diet_3 = "3", diet_4 = "4", diet_5 = "5")
+
 
 # --- # --- # --- # --- # --- # --- # --- # --- # --- # --- # --- # --- # --- # --- # --- # --- 
 # Next step is to either read in TEE output csv or run the model to get TEE outputs
 # Model Output ----------------------------------------------------------
 
-#Choose model results you want to use
+#Choose model results you want to use- need total energy expenditure values
 model_results <- read.csv("~/Documents/Thesis/otteR/Results/original_model_run_new.csv") 
 
 # Read in mass data so we can calculate % body mass by diet 
@@ -187,6 +216,13 @@ diet4 <- prey_energy_calcs %>%
 diet5 <- prey_energy_calcs %>% 
   filter(diet == 5)
 
+# This is to have an easy to call total energy density of each diet 
+#  (clunky but only way I could figure out how to get code to work)
+energy_density_all_diets <- prey_energy_calcs %>% 
+  summarise(mean(total_energy_density)) %>% 
+  pivot_wider(names_from ="diet", values_from = "mean(total_energy_density)")
+ 
+
 # Diet Analysis ------------------------------------------------------------------
 
 # Diet 1 --------------------------------------------------------------------------
@@ -203,151 +239,211 @@ diet1_analysis <- model_results %>%
   #calculate total captured biomass (g)- same issue with warning, you can ignore it
   mutate(total_captured_biomass = (ingested_food_mass * diet1$total_captured_biomass)) %>% 
   #calculate ingested food mass (IFM) as % body mass
-  mutate(IFM_perc_body_mass = (ingested_food_mass / (Av_mass*1000))*100)
-  
- # Prey Item #'s ------------------------------------------------------------------
-
-diet1_analysis <- diet1_analysis %>% 
-  mutate(abalone = gross_energy/ ((diet1$total_energy_density) *
-                                    (diet1$prop_edible_biomass1 /abalone$mass_edible)))
+  mutate(IFM_perc_body_mass = (ingested_food_mass / (Av_mass*1000))*100) %>% 
  
-
-
-
-
-
-
-
-
+   #Now calculate prey item numbers:
   
+  #calculate number of abalone 
+  mutate(abalone = ((gross_energy/(energy_density_all_diets$"1")) 
+                    * (abalone$diet_1/abalone$mass_edible))) %>% 
+  #calculate number of Cancer crab
+  mutate(cancer_crabs = ((gross_energy/(energy_density_all_diets$"1")) 
+                    * (cancer_crab$diet_1/cancer_crab$mass_edible))) %>% 
+  #calculate number of kelp crab
+  mutate(kelp_crab = ((gross_energy/(energy_density_all_diets$"1")) 
+                         * (kelp_crab$diet_1/kelp_crab$mass_edible))) %>%
+  #calculate number of urchin
+  mutate(urchin = ((gross_energy/(energy_density_all_diets$"1")) 
+                         * (urchin$diet_1/urchin$mass_edible))) %>%
+  #calculate number of clam
+  mutate(clam = ((gross_energy/(energy_density_all_diets$"1")) 
+                   * (clam$diet_1/clam$mass_edible))) %>%
+  #calculate number of mussels
+  mutate(mussel = ((gross_energy/(energy_density_all_diets$"1")) 
+                   * (mussel$diet_1/mussel$mass_edible))) %>%
+  #calculate number of snails
+  mutate(turban_snail = ((gross_energy/(energy_density_all_diets$"1")) 
+                   * (turban_snail$diet_1/turban_snail$mass_edible))) 
+ 
+#Save output
+folder_path <- "~/Documents/Thesis/otteR/Results"
+write.csv(diet1_analysis, file.path(folder_path, "Diet1_Analysis.csv"), row.names=FALSE)
+
+# Diet 2 ----------------------------------------------------------------
+
+diet2_analysis <- model_results %>% 
+  # Clean up df 
+  select(Sex, Age, Lifestage, with.pup, total_energy, Av_mass) %>% 
+  #rename total energy to net energy expenditure
+  rename(net_energy = total_energy) %>% 
+  #convert to gross energy, assuming 40% energy losses to digestion, urine, feces
+  mutate(gross_energy = (net_energy/0.6)) %>% 
+  #calculate ingested food mass (IFM) (g)- there is a warning, but the calculation is correct, 
+  #  so you can ignore the warning.
+  mutate(ingested_food_mass = (gross_energy/diet2$total_energy_density)) %>% 
+  #calculate total captured biomass (g)- same issue with warning, you can ignore it
+  mutate(total_captured_biomass = (ingested_food_mass * diet2$total_captured_biomass)) %>% 
+  #calculate ingested food mass (IFM) as % body mass
+  mutate(IFM_perc_body_mass = (ingested_food_mass / (Av_mass*1000))*100) %>% 
   
-# 
-# #Diet 2 ----------------------------------------------------------------
-# diet2 <- diet_scenarios %>% 
-#   filter (diet == "2") %>% 
-#   #calculate ingested mass per 100 items consumed
-#   mutate(ing_mass_per100items = mass_edible * diet_proportion) %>% 
-#   mutate(sum_ing_mass_per100items = sum(ing_mass_per100items)) %>% 
-#   #calculate the proportion of edible biomass for each prey item
-#   # so of total biomass, what proportion is each species within the diet scenario
-#   mutate(prop_edible_biomass = ing_mass_per100items/sum_ing_mass_per100items) %>% 
-#   #calculate original (og) mass of prey items by species 
-#   mutate(og_mass = mass_edible/portion_edible) %>% 
-#   #calculate the original (og) mass ingested per 100 items consumed
-#   mutate(og_ing_mass_per100_items = og_mass * diet_proportion) %>% 
-#   #calculate sum of original mass 
-#   mutate(sum_og_ing_mass_per100_items = sum(og_ing_mass_per100_items)) %>% 
-#   #calculate the proportion of biomass from original mass calcs
-#   mutate(prop_og_biomass = og_ing_mass_per100_items/sum_og_ing_mass_per100_items) %>% 
-#   #calculate the energy contribution of each species in the diet (kJ)
-#   mutate(energy_contribution = energy_density * prop_edible_biomass) %>% 
-#   #calculate total energy density of diet
-#   mutate(total_energy_density = sum(energy_contribution)) %>% 
-#   #calculate the total captured biomass (versus ingested) (g/kJ)
-#   # so for each kJ of energy, how many grams of each species is contributing
-#   mutate(captured_biomass= prop_edible_biomass/portion_edible) %>% 
-#   mutate(total_captured_biomass = sum(captured_biomass)) %>% 
-#   #calculates total captured mass per 100kJ of energy intake
-#   mutate(cap_mass_per100kJ = (total_captured_biomass/total_energy_density)*100) %>% 
-#   #calculate the ecological ratio, which is the proportion of captured vs ingested biomass
-#   mutate(ecological_ratio = sum_og_ing_mass_per100_items/sum_ing_mass_per100items) %>% 
-#   mutate(ing_mass_per100kJ = cap_mass_per100kJ/ecological_ratio)
-# 
-# 
+  #Now calculate prey item numbers:
+  
+  #calculate number of abalone 
+  mutate(abalone = ((gross_energy/(energy_density_all_diets$"2")) 
+                    * (abalone$diet_2/abalone$mass_edible))) %>% 
+  #calculate number of Cancer crab
+  mutate(cancer_crabs = ((gross_energy/(energy_density_all_diets$"2")) 
+                         * (cancer_crab$diet_2/cancer_crab$mass_edible))) %>% 
+  #calculate number of kelp crab
+  mutate(kelp_crab = ((gross_energy/(energy_density_all_diets$"2")) 
+                      * (kelp_crab$diet_2/kelp_crab$mass_edible))) %>%
+  #calculate number of urchin
+  mutate(urchin = ((gross_energy/(energy_density_all_diets$"2")) 
+                   * (urchin$diet_2/urchin$mass_edible))) %>%
+  #calculate number of clam
+  mutate(clam = ((gross_energy/(energy_density_all_diets$"2")) 
+                 * (clam$diet_2/clam$mass_edible))) %>%
+  #calculate number of mussels
+  mutate(mussel = ((gross_energy/(energy_density_all_diets$"2")) 
+                   * (mussel$diet_2/mussel$mass_edible))) %>%
+  #calculate number of snails
+  mutate(turban_snail = ((gross_energy/(energy_density_all_diets$"2")) 
+                         * (turban_snail$diet_2/turban_snail$mass_edible))) 
+
+#Save output
+folder_path <- "~/Documents/Thesis/otteR/Results"
+write.csv(diet2_analysis, file.path(folder_path, "Diet2_Analysis.csv"), row.names=FALSE)
+
 # #Diet 3 ----------------------------------------------------------------
-# diet3 <- diet_scenarios %>% 
-#   filter (diet == "3") %>% 
-#   #calculate ingested mass per 100 items consumed
-#   mutate(ing_mass_per100items = mass_edible * diet_proportion) %>% 
-#   mutate(sum_ing_mass_per100items = sum(ing_mass_per100items)) %>% 
-#   #calculate the proportion of edible biomass for each prey item
-#   # so of total biomass, what proportion is each species within the diet scenario
-#   mutate(prop_edible_biomass = ing_mass_per100items/sum_ing_mass_per100items) %>% 
-#   #calculate original (og) mass of prey items by species 
-#   mutate(og_mass = mass_edible/portion_edible) %>% 
-#   #calculate the original (og) mass ingested per 100 items consumed
-#   mutate(og_ing_mass_per100_items = og_mass * diet_proportion) %>% 
-#   #calculate sum of original mass 
-#   mutate(sum_og_ing_mass_per100_items = sum(og_ing_mass_per100_items)) %>% 
-#   #calculate the proportion of biomass from original mass calcs
-#   mutate(prop_og_biomass = og_ing_mass_per100_items/sum_og_ing_mass_per100_items) %>% 
-#   #calculate the energy contribution of each species in the diet (kJ)
-#   mutate(energy_contribution = energy_density * prop_edible_biomass) %>% 
-#   #calculate total energy density of diet
-#   mutate(total_energy_density = sum(energy_contribution)) %>% 
-#   #calculate the total captured biomass (versus ingested) (g/kJ)
-#   # so for each kJ of energy, how many grams of each species is contributing
-#   mutate(captured_biomass= prop_edible_biomass/portion_edible) %>% 
-#   mutate(total_captured_biomass = sum(captured_biomass)) %>% 
-#   #calculates total captured mass per 100kJ of energy intake
-#   mutate(cap_mass_per100kJ = (total_captured_biomass/total_energy_density)*100) %>% 
-#   #calculate the ecological ratio, which is the proportion of captured vs ingested biomass
-#   mutate(ecological_ratio = sum_og_ing_mass_per100_items/sum_ing_mass_per100items) %>% 
-#   mutate(ing_mass_per100kJ = cap_mass_per100kJ/ecological_ratio)
-# 
+
+diet3_analysis <- model_results %>% 
+  # Clean up df 
+  select(Sex, Age, Lifestage, with.pup, total_energy, Av_mass) %>% 
+  #rename total energy to net energy expenditure
+  rename(net_energy = total_energy) %>% 
+  #convert to gross energy, assuming 40% energy losses to digestion, urine, feces
+  mutate(gross_energy = (net_energy/0.6)) %>% 
+  #calculate ingested food mass (IFM) (g)- there is a warning, but the calculation is correct, 
+  #  so you can ignore the warning.
+  mutate(ingested_food_mass = (gross_energy/diet3$total_energy_density)) %>% 
+  #calculate total captured biomass (g)- same issue with warning, you can ignore it
+  mutate(total_captured_biomass = (ingested_food_mass * diet3$total_captured_biomass)) %>% 
+  #calculate ingested food mass (IFM) as % body mass
+  mutate(IFM_perc_body_mass = (ingested_food_mass / (Av_mass*1000))*100) %>% 
+  
+  #Now calculate prey item numbers:
+  
+  #calculate number of abalone 
+  mutate(abalone = ((gross_energy/(energy_density_all_diets$"3")) 
+                    * (abalone$diet_3/abalone$mass_edible))) %>% 
+  #calculate number of Cancer crab
+  mutate(cancer_crabs = ((gross_energy/(energy_density_all_diets$"3")) 
+                         * (cancer_crab$diet_3/cancer_crab$mass_edible))) %>% 
+  #calculate number of kelp crab
+  mutate(kelp_crab = ((gross_energy/(energy_density_all_diets$"3")) 
+                      * (kelp_crab$diet_3/kelp_crab$mass_edible))) %>%
+  #calculate number of urchin
+  mutate(urchin = ((gross_energy/(energy_density_all_diets$"3")) 
+                   * (urchin$diet_3/urchin$mass_edible))) %>%
+  #calculate number of clam
+  mutate(clam = ((gross_energy/(energy_density_all_diets$"3")) 
+                 * (clam$diet_3/clam$mass_edible))) %>%
+  #calculate number of mussels
+  mutate(mussel = ((gross_energy/(energy_density_all_diets$"3")) 
+                   * (mussel$diet_3/mussel$mass_edible))) %>%
+  #calculate number of snails
+  mutate(turban_snail = ((gross_energy/(energy_density_all_diets$"3")) 
+                         * (turban_snail$diet_3/turban_snail$mass_edible))) 
+
+#Save output
+folder_path <- "~/Documents/Thesis/otteR/Results"
+write.csv(diet3_analysis, file.path(folder_path, "Diet3_Analysis.csv"), row.names=FALSE)
+
 # #Diet 4 ----------------------------------------------------------------
-# diet4 <- diet_scenarios %>% 
-#   filter (diet == "4") %>% 
-#   #calculate ingested mass per 100 items consumed
-#   mutate(ing_mass_per100items = mass_edible * diet_proportion) %>% 
-#   mutate(sum_ing_mass_per100items = sum(ing_mass_per100items)) %>% 
-#   #calculate the proportion of edible biomass for each prey item
-#   # so of total biomass, what proportion is each species within the diet scenario
-#   mutate(prop_edible_biomass = ing_mass_per100items/sum_ing_mass_per100items) %>% 
-#   #calculate original (og) mass of prey items by species 
-#   mutate(og_mass = mass_edible/portion_edible) %>% 
-#   #calculate the original (og) mass ingested per 100 items consumed
-#   mutate(og_ing_mass_per100_items = og_mass * diet_proportion) %>% 
-#   #calculate sum of original mass 
-#   mutate(sum_og_ing_mass_per100_items = sum(og_ing_mass_per100_items)) %>% 
-#   #calculate the proportion of biomass from original mass calcs
-#   mutate(prop_og_biomass = og_ing_mass_per100_items/sum_og_ing_mass_per100_items) %>% 
-#   #calculate the energy contribution of each species in the diet (kJ)
-#   mutate(energy_contribution = energy_density * prop_edible_biomass) %>% 
-#   #calculate total energy density of diet
-#   mutate(total_energy_density = sum(energy_contribution)) %>% 
-#   #calculate the total captured biomass (versus ingested) (g/kJ)
-#   # so for each kJ of energy, how many grams of each species is contributing
-#   mutate(captured_biomass= prop_edible_biomass/portion_edible) %>% 
-#   mutate(total_captured_biomass = sum(captured_biomass)) %>% 
-#   #calculates total captured mass per 100kJ of energy intake
-#   mutate(cap_mass_per100kJ = (total_captured_biomass/total_energy_density)*100) %>% 
-#   #calculate the ecological ratio, which is the proportion of captured vs ingested biomass
-#   mutate(ecological_ratio = sum_og_ing_mass_per100_items/sum_ing_mass_per100items) %>% 
-#   mutate(ing_mass_per100kJ = cap_mass_per100kJ/ecological_ratio)
-# 
+
+diet4_analysis <- model_results %>% 
+  # Clean up df 
+  select(Sex, Age, Lifestage, with.pup, total_energy, Av_mass) %>% 
+  #rename total energy to net energy expenditure
+  rename(net_energy = total_energy) %>% 
+  #convert to gross energy, assuming 40% energy losses to digestion, urine, feces
+  mutate(gross_energy = (net_energy/0.6)) %>% 
+  #calculate ingested food mass (IFM) (g)- there is a warning, but the calculation is correct, 
+  #  so you can ignore the warning.
+  mutate(ingested_food_mass = (gross_energy/diet4$total_energy_density)) %>% 
+  #calculate total captured biomass (g)- same issue with warning, you can ignore it
+  mutate(total_captured_biomass = (ingested_food_mass * diet4$total_captured_biomass)) %>% 
+  #calculate ingested food mass (IFM) as % body mass
+  mutate(IFM_perc_body_mass = (ingested_food_mass / (Av_mass*1000))*100) %>% 
+ 
+   #Now calculate prey item numbers:
+  
+  #calculate number of abalone 
+  mutate(abalone = ((gross_energy/(energy_density_all_diets$"4")) 
+                    * (abalone$diet_4/abalone$mass_edible))) %>% 
+  #calculate number of Cancer crab
+  mutate(cancer_crabs = ((gross_energy/(energy_density_all_diets$"4")) 
+                         * (cancer_crab$diet_4/cancer_crab$mass_edible))) %>% 
+  #calculate number of kelp crab
+  mutate(kelp_crab = ((gross_energy/(energy_density_all_diets$"4")) 
+                      * (kelp_crab$diet_4/kelp_crab$mass_edible))) %>%
+  #calculate number of urchin
+  mutate(urchin = ((gross_energy/(energy_density_all_diets$"4")) 
+                   * (urchin$diet_4/urchin$mass_edible))) %>%
+  #calculate number of clam
+  mutate(clam = ((gross_energy/(energy_density_all_diets$"4")) 
+                 * (clam$diet_4/clam$mass_edible))) %>%
+  #calculate number of mussels
+  mutate(mussel = ((gross_energy/(energy_density_all_diets$"4")) 
+                   * (mussel$diet_4/mussel$mass_edible))) %>%
+  #calculate number of snails
+  mutate(turban_snail = ((gross_energy/(energy_density_all_diets$"4")) 
+                         * (turban_snail$diet_4/turban_snail$mass_edible))) 
+
+#Save output
+folder_path <- "~/Documents/Thesis/otteR/Results"
+write.csv(diet4_analysis, file.path(folder_path, "Diet4_Analysis.csv"), row.names=FALSE)
+
 # #Diet 5 ----------------------------------------------------------------
-# diet5 <- diet_scenarios %>% 
-#   filter (diet == "5") %>% 
-#   #calculate ingested mass per 100 items consumed
-#   mutate(ing_mass_per100items = mass_edible * diet_proportion) %>% 
-#   mutate(sum_ing_mass_per100items = sum(ing_mass_per100items)) %>% 
-#   #calculate the proportion of edible biomass for each prey item
-#   # so of total biomass, what proportion is each species within the diet scenario
-#   mutate(prop_edible_biomass = ing_mass_per100items/sum_ing_mass_per100items) %>% 
-#   #calculate original (og) mass of prey items by species 
-#   mutate(og_mass = mass_edible/portion_edible) %>% 
-#   #calculate the original (og) mass ingested per 100 items consumed
-#   mutate(og_ing_mass_per100_items = og_mass * diet_proportion) %>% 
-#   #calculate sum of original mass 
-#   mutate(sum_og_ing_mass_per100_items = sum(og_ing_mass_per100_items)) %>% 
-#   #calculate the proportion of biomass from original mass calcs
-#   mutate(prop_og_biomass = og_ing_mass_per100_items/sum_og_ing_mass_per100_items) %>% 
-#   #calculate the energy contribution of each species in the diet (kJ)
-#   mutate(energy_contribution = energy_density * prop_edible_biomass) %>% 
-#   #calculate total energy density of diet
-#   mutate(total_energy_density = sum(energy_contribution)) %>% 
-#   #calculate the total captured biomass (versus ingested) (g/kJ)
-#   # so for each kJ of energy, how many grams of each species is contributing
-#   mutate(captured_biomass= prop_edible_biomass/portion_edible) %>% 
-#   mutate(total_captured_biomass = sum(captured_biomass)) %>% 
-#   #calculates total captured mass per 100kJ of energy intake
-#   mutate(cap_mass_per100kJ = (total_captured_biomass/total_energy_density)*100) %>% 
-#   #calculate the ecological ratio, which is the proportion of captured vs ingested biomass
-#   mutate(ecological_ratio = sum_og_ing_mass_per100_items/sum_ing_mass_per100items) %>% 
-#   mutate(ing_mass_per100kJ = cap_mass_per100kJ/ecological_ratio)
-# 
-#   
-# 
-# 
-# 
+
+diet5_analysis <- model_results %>% 
+  # Clean up df 
+  select(Sex, Age, Lifestage, with.pup, total_energy, Av_mass) %>% 
+  #rename total energy to net energy expenditure
+  rename(net_energy = total_energy) %>% 
+  #convert to gross energy, assuming 40% energy losses to digestion, urine, feces
+  mutate(gross_energy = (net_energy/0.6)) %>% 
+  #calculate ingested food mass (IFM) (g)- there is a warning, but the calculation is correct, 
+  #  so you can ignore the warning.
+  mutate(ingested_food_mass = (gross_energy/diet5$total_energy_density)) %>% 
+  #calculate total captured biomass (g)- same issue with warning, you can ignore it
+  mutate(total_captured_biomass = (ingested_food_mass * diet5$total_captured_biomass)) %>% 
+  #calculate ingested food mass (IFM) as % body mass
+  mutate(IFM_perc_body_mass = (ingested_food_mass / (Av_mass*1000))*100) %>% 
+  #Now calculate prey item numbers:
+  
+  #calculate number of abalone 
+  mutate(abalone = ((gross_energy/(energy_density_all_diets$"5")) 
+                    * (abalone$diet_5/abalone$mass_edible))) %>% 
+  #calculate number of Cancer crab
+  mutate(cancer_crabs = ((gross_energy/(energy_density_all_diets$"5")) 
+                         * (cancer_crab$diet_5/cancer_crab$mass_edible))) %>% 
+  #calculate number of kelp crab
+  mutate(kelp_crab = ((gross_energy/(energy_density_all_diets$"5")) 
+                      * (kelp_crab$diet_5/kelp_crab$mass_edible))) %>%
+  #calculate number of urchin
+  mutate(urchin = ((gross_energy/(energy_density_all_diets$"5")) 
+                   * (urchin$diet_5/urchin$mass_edible))) %>%
+  #calculate number of clam
+  mutate(clam = ((gross_energy/(energy_density_all_diets$"5")) 
+                 * (clam$diet_5/clam$mass_edible))) %>%
+  #calculate number of mussels
+  mutate(mussel = ((gross_energy/(energy_density_all_diets$"5")) 
+                   * (mussel$diet_5/mussel$mass_edible))) %>%
+  #calculate number of snails
+  mutate(turban_snail = ((gross_energy/(energy_density_all_diets$"5")) 
+                         * (turban_snail$diet_5/turban_snail$mass_edible))) 
+
+#Save output
+folder_path <- "~/Documents/Thesis/otteR/Results"
+write.csv(diet5_analysis, file.path(folder_path, "Diet5_Analysis.csv"), row.names=FALSE)
