@@ -5,8 +5,9 @@ account: novotny
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 14296499
-bundleId: 9981292
+bundleId: 9982015
 url: https://novotny.shinyapps.io/otteR/
 version: 1
 asMultiple: FALSE
 asStatic: FALSE
+additionalFiles: Pictures/Sea Otter.png

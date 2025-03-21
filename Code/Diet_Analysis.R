@@ -462,3 +462,42 @@ write.csv(diet5_analysis, "Results/Diet5_Analysis.csv", row.names=FALSE)
 #     BBBB  III    T    CCCC  H   H
 
 
+
+
+
+# #Generalized function ----------------------------------------------------------------
+
+
+analyze_diet <- function(diet_number, model_results, diet_list, energy_density_all_diets, prey_items) {
+  
+  diet_data <- diet_list[[paste0("diet", diet_number)]]
+  
+  analysis <- model_results %>%
+    select(Sex, Age, Lifestage, with.pup, total_energy, Av_mass) %>%
+    rename(net_energy = total_energy) %>%
+    mutate(
+      gross_energy = net_energy / 0.6,
+      ingested_food_mass = gross_energy / diet_data$total_energy_density,
+      total_captured_biomass = ingested_food_mass * diet_data$total_captured_biomass,
+      IFM_perc_body_mass = (ingested_food_mass / (Av_mass * 1000)) * 100
+    )
+  
+  # Loop through each prey item and calculate the number of individuals
+  for (prey in names(prey_items)) {
+    analysis <- analysis %>%
+      mutate(!!prey := (gross_energy / energy_density_all_diets[[as.character(diet_number)]]) * 
+               (prey_items[[prey]][[paste0("diet_", diet_number)]] / prey_items[[prey]]$mass_edible))
+  }
+  
+  # Save output
+  #write.csv(analysis, paste0("Results/Diet", diet_number, "_Analysis.csv"), row.names = FALSE)
+  
+  return(analysis)
+}
+
+diet_list <- list(diet1 = diet1, diet2 = diet2, diet3 = diet3, diet4 = diet4, diet5 = diet5)  # Store diet data in a list
+prey_items <- list(abalone = abalone, cancer_crab = cancer_crab, kelp_crab = kelp_crab,
+                   urchin = urchin, clam = clam, mussel = mussel, turban_snail = turban_snail)
+
+
+
