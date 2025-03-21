@@ -10,7 +10,7 @@
 
 rm(list = ls())
 # setwd("~/Documents/Thesis/Otter Data/Model Data/R codes/Model to R/Sensitivity Analysis")
-setwd("~/Documents/Thesis/otteR/Data")
+#setwd("~/Documents/Thesis/otteR/Data")
 
 # Packages--------------------------------------------------------------
 library(tidyverse)
@@ -22,13 +22,13 @@ cost_pup <- 3931 # TODO to change
 total_min_per_day <- 1440
 
 # Data------------------------------------------------------------------
-masses <- read.csv(file ='mass_growth.csv') 
+masses <- read.csv(file ='Data/mass_growth.csv') 
 # filter(!is.na(Age)) # remove empty rows
 
-act_budgets <- read.csv(file = 'ActivityBudgets.csv') 
+act_budgets <- read.csv(file = 'Data/ActivityBudgets.csv') 
 # filter(!is.na(MR)) # remove empty rows
 
-age_convert <- read.csv(file = 'age_lifestage.csv')
+age_convert <- read.csv(file = 'Data/age_lifestage.csv')
 
 # Functions ------------------------------------------------------------
 
@@ -163,7 +163,8 @@ model.run.1 <- otter_model(masses = masses,
 
 
 ## Save out as csv ##
-folder_path <- "~/Documents/Thesis/otteR/Results"
-filename <- paste0("original_model_run_new.csv")
+#folder_path <- "~/Documents/Thesis/otteR/Results"
+#filename <- paste0("Results/original_model_run_new.csv")
 # Save the results to CSV
-write.csv(model.run.1, file = filename, row.names = FALSE)
+write.csv(model.run.1, file = "Results/original_model_run_new.csv", row.names = FALSE)
+

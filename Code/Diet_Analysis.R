@@ -31,13 +31,14 @@
 # - edible portion of prey item
 # - mass of edible portion of prey item
 
-rm(list = ls())
+#rm(list = ls())
 
 # Set Working Directory ------------------------------------------------
-setwd("~/Documents/Thesis/otteR/Data")
+#setwd("~/Documents/Thesis/otteR/Data")
+library(tidyverse)
 
 # Data ----------------------------------------------------------------
-diet_scenarios <- read.csv(file ='Diet_Analysis.csv') 
+diet_scenarios <- read.csv(file ='Data/Diet_Analysis.csv') 
 
 # Prey Energy Calculations -----------------------------------------------------
 # These calcs are done to calculate average values to compare between diet scenarios
@@ -74,8 +75,8 @@ prey_energy_calcs <- diet_scenarios %>%
   mutate(ing_mass_per100kJ = cap_mass_per100kJ/ecological_ratio) 
 
 # Save Prey Energy Calcs 
-folder_path <- "~/Documents/Thesis/otteR/Results"
-write.csv(prey_energy_calcs, file.path(folder_path, "prey_energy_calcs.csv"), row.names=FALSE)
+#folder_path <- "~/Documents/Thesis/otteR/Results"
+write.csv(prey_energy_calcs, "Results/prey_energy_calcs.csv", row.names=FALSE)
 
 # --- # --- # --- # --- # --- # --- # --- # --- # --- # --- # --- # --- # --- # --- # --- # --- 
 
@@ -214,10 +215,10 @@ energy_density_all_diets <- prey_energy_calcs %>%
 # Next step is to either read in TEE output csv or run the model to get TEE outputs
 
 #Choose model results you want to use- need total energy expenditure values
-model_results <- read.csv("~/Documents/Thesis/otteR/Results/original_model_run_new.csv") 
+model_results <- read.csv("Results/original_model_run_new.csv") 
 
 # Read in mass data so we can calculate % body mass by diet 
-masses <- read.csv(file ='mass_growth.csv') 
+masses <- read.csv(file ='Data/mass_growth.csv') 
 
 # Add mass to model outputs 
 model_results <- model_results %>% 
@@ -270,8 +271,8 @@ diet1_analysis <- model_results %>%
                    * (turban_snail$diet_1/turban_snail$mass_edible))) 
  
 #Save output
-folder_path <- "~/Documents/Thesis/otteR/Results"
-write.csv(diet1_analysis, file.path(folder_path, "Diet1_Analysis.csv"), row.names=FALSE)
+#folder_path <- "~/Documents/Thesis/otteR/Results"
+write.csv(diet1_analysis, "Results/Diet1_Analysis.csv", row.names=FALSE)
 
 # Diet 2 ----------------------------------------------------------------
 
@@ -315,8 +316,8 @@ diet2_analysis <- model_results %>%
                          * (turban_snail$diet_2/turban_snail$mass_edible))) 
 
 #Save output
-folder_path <- "~/Documents/Thesis/otteR/Results"
-write.csv(diet2_analysis, file.path(folder_path, "Diet2_Analysis.csv"), row.names=FALSE)
+#folder_path <- "~/Documents/Thesis/otteR/Results"
+write.csv(diet2_analysis, "Results/Diet2_Analysis.csv", row.names=FALSE)
 
 # #Diet 3 ----------------------------------------------------------------
 
@@ -360,8 +361,8 @@ diet3_analysis <- model_results %>%
                          * (turban_snail$diet_3/turban_snail$mass_edible))) 
 
 #Save output
-folder_path <- "~/Documents/Thesis/otteR/Results"
-write.csv(diet3_analysis, file.path(folder_path, "Diet3_Analysis.csv"), row.names=FALSE)
+#folder_path <- "~/Documents/Thesis/otteR/Results"
+write.csv(diet3_analysis, "Results/Diet3_Analysis.csv", row.names=FALSE)
 
 # #Diet 4 ----------------------------------------------------------------
 
@@ -405,8 +406,8 @@ diet4_analysis <- model_results %>%
                          * (turban_snail$diet_4/turban_snail$mass_edible))) 
 
 #Save output
-folder_path <- "~/Documents/Thesis/otteR/Results"
-write.csv(diet4_analysis, file.path(folder_path, "Diet4_Analysis.csv"), row.names=FALSE)
+#folder_path <- "~/Documents/Thesis/otteR/Results"
+write.csv(diet4_analysis, "Results/Diet4_Analysis.csv", row.names=FALSE)
 
 # #Diet 5 ----------------------------------------------------------------
 
@@ -449,8 +450,8 @@ diet5_analysis <- model_results %>%
                          * (turban_snail$diet_5/turban_snail$mass_edible))) 
 
 #Save output
-folder_path <- "~/Documents/Thesis/otteR/Results"
-write.csv(diet5_analysis, file.path(folder_path, "Diet5_Analysis.csv"), row.names=FALSE)
+#folder_path <- "~/Documents/Thesis/otteR/Results"
+write.csv(diet5_analysis, "Results/Diet5_Analysis.csv", row.names=FALSE)
 
 # I made this code my 
 

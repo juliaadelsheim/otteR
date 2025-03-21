@@ -1,0 +1,12 @@
+name: otteR
+title: otteR
+username: novotny
+account: novotny
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 14296499
+bundleId: 9981292
+url: https://novotny.shinyapps.io/otteR/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
